@@ -40,4 +40,5 @@ class ChatResponse(BaseModel):
     status: str
     response_type: str
     message: str
+    source: str
     analysis: AnalyzeResponse | None = None

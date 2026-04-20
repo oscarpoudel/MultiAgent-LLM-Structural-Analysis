@@ -30,11 +30,34 @@ class AgentResult:
     report_markdown: str
 
 
+@dataclass
+class ConversationResult:
+    message: str
+    source: str
+
+
 class StructuralAgentSystem:
     def __init__(self, llm: OllamaClient, agent_timeout_s: float = 3.0) -> None:
         self.llm = llm
         self.agent_timeout_s = agent_timeout_s
         self.managed_agents = {
+            "conversation": ManagedAgent(
+                name="Structural Conversation Agent",
+                instructions=(
+                    "You are a structural analysis expert assistant. Reply conversationally and briefly. "
+                    "When greeted, introduce yourself as a structural analysis expert. Mention that you can help "
+                    "with preliminary beam analysis, OpenSeesPy elastic models, reactions, shear, moment, "
+                    "deflection checks, assumptions, warnings, and report drafts. Do not claim licensed approval."
+                ),
+                fallback={
+                    "summary": (
+                        "Hi, I am your structural analysis assistant. I can help with preliminary beam analysis, "
+                        "OpenSeesPy-backed elastic models, reactions, shear, moment, deflection checks, assumptions, "
+                        "warnings, and engineering report drafts. For now I am strongest on simply supported beams "
+                        "with uniform loads."
+                    )
+                },
+            ),
             "intent": ManagedAgent(
                 name="Structural Intent Agent",
                 instructions="You extract structural engineering intent. Return compact JSON only.",
@@ -55,6 +78,19 @@ class StructuralAgentSystem:
                 },
             ),
         }
+
+    def chat(self, message: str) -> ConversationResult:
+        agent = self.managed_agents["conversation"]
+        task = (
+            "User message:\n"
+            f"{message}\n\n"
+            "Respond as the assistant. Keep it useful, direct, and no more than 4 sentences."
+        )
+        try:
+            response = self._generate_with_timeout(agent.instructions, task).strip()
+            return ConversationResult(message=response or agent.fallback["summary"], source="llm")
+        except Exception:
+            return ConversationResult(message=agent.fallback["summary"], source="fallback")
 
     def analyze(self, prompt: str) -> AgentResult:
         traces: list[AgentTrace] = []

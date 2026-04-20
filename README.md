@@ -28,7 +28,7 @@ Copy-Item .env.example .env
 
 Edit `.env` if your Ollama server or model changes.
 
-The default `.env` uses `AGENT_LLM_PROVIDER=none` so the web app does not hang on slow LLM calls while you work on solver tools. Set it to `ollama` for bounded direct Ollama calls, or `pydanticai` to try the PydanticAI adapter.
+The default `.env` uses `AGENT_LLM_PROVIDER=ollama`, so casual chat such as `hi` goes through the configured Ollama model. Chat responses include `source: "llm"` when the model answers and `source: "fallback"` when the model times out or is unavailable. Set `AGENT_LLM_PROVIDER=none` for deterministic fallbacks while debugging solver tools, or `pydanticai` to try the PydanticAI adapter.
 
 ## Run Locally
 
@@ -107,3 +107,9 @@ waitress-serve --listen=127.0.0.1:5000 app.main:app
 Keep `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and `APP_SECRET_KEY` in the host's environment variable settings, not in git.
 
 If the Ollama server is private or blocked from the hosting provider, deploy Ollama on a reachable machine or swap the LLM client later while keeping the same agent interface.
+
+## License
+
+This project is licensed under the PolyForm Noncommercial License 1.0.0.
+
+Research, experiment, testing, personal study, educational use, and noncommercial public-interest use are permitted. Commercial use is not permitted without separate written permission from the copyright holder.

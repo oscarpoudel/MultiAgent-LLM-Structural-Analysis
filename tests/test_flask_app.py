@@ -1,6 +1,13 @@
 from app.main import app
 
 
+class StubAgentSystem:
+    def chat(self, message: str):
+        from app.agents import ConversationResult
+
+        return ConversationResult(message=f"LLM replied to: {message}", source="llm")
+
+
 def test_analyze_route_returns_opensees_result() -> None:
     client = app.test_client()
 
@@ -21,8 +28,10 @@ def test_analyze_route_returns_opensees_result() -> None:
     assert round(float(data["results"]["max_moment_kn_m"]), 2) == 90.0
 
 
-def test_chat_route_answers_greeting_without_analysis() -> None:
+def test_chat_route_answers_greeting_with_llm(monkeypatch) -> None:
     client = app.test_client()
+
+    monkeypatch.setattr("app.main.get_agent_system", lambda: StubAgentSystem())
 
     response = client.post("/api/chat", json={"message": "hi"})
 
@@ -30,7 +39,8 @@ def test_chat_route_answers_greeting_without_analysis() -> None:
     data = response.get_json()
     assert data["status"] == "ok"
     assert data["response_type"] == "conversation"
-    assert "structural analysis assistant" in data["message"]
+    assert data["message"] == "LLM replied to: hi"
+    assert data["source"] == "llm"
     assert data["analysis"] is None
 
 
@@ -50,4 +60,5 @@ def test_chat_route_runs_analysis_for_engineering_request() -> None:
     assert response.status_code == 200
     data = response.get_json()
     assert data["response_type"] == "analysis"
+    assert data["source"] == "openseespy"
     assert data["analysis"]["results"]["solver"] == "openseespy_elastic_beam"

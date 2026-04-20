@@ -68,15 +68,6 @@ def is_structural_analysis_request(message: str) -> bool:
     return any(term in text for term in analysis_terms)
 
 
-def assistant_intro() -> str:
-    return (
-        "Hi, I am your structural analysis assistant. I can help with preliminary beam analysis, "
-        "OpenSeesPy-backed elastic models, reactions, shear, moment, deflection checks, assumptions, "
-        "warnings, and engineering report drafts. For now I am strongest on simply supported beams "
-        "with uniform loads, and we can extend me next into point loads, cantilevers, frames, and load combinations."
-    )
-
-
 @app.get("/")
 def index():
     return send_from_directory(BASE_DIR / "static", "index.html")
@@ -106,10 +97,12 @@ def chat():
         return jsonify({"status": "error", "errors": error.errors()}), 422
 
     if not is_structural_analysis_request(chat_request.message):
+        chat_result = get_agent_system().chat(chat_request.message)
         response = ChatResponse(
             status="ok",
             response_type="conversation",
-            message=assistant_intro(),
+            message=chat_result.message,
+            source=chat_result.source,
         )
         return jsonify(response.model_dump(mode="json"))
 
@@ -118,6 +111,7 @@ def chat():
         status="ok",
         response_type="analysis",
         message="I ran the preliminary OpenSeesPy analysis and summarized the key checks below.",
+        source="openseespy",
         analysis=analysis,
     )
     return jsonify(response.model_dump(mode="json"))
