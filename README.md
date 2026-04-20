@@ -1,34 +1,88 @@
-# Structural Analysis Multi-Agent Prototype
+# Multi-Agent LLM Structural Analysis
 
-A minimal web-hosted structural engineering assistant. V1 uses Flask, deterministic agent fallbacks by default, optional Ollama/PydanticAI LLM calls, and OpenSeesPy tools for preliminary beam analysis.
+A Flask-based structural analysis assistant that combines conversational agent workflows with deterministic engineering tools and OpenSeesPy. The current implementation focuses on preliminary elastic beam checks and provides a foundation for adding more advanced OpenSees models, report generation, and multi-agent planning.
 
-This prototype is for preliminary engineering assistance only. It is not a licensed design approval system.
+This software is intended for research, education, experimentation, and early-stage engineering assistance. It is not a substitute for review, approval, or design work by a licensed professional engineer.
 
-## What Works In V1
+## Features
 
-- Web UI served by Flask
-- Chat-style assistant for greetings, capability questions, and analysis requests
-- Optional Ollama or PydanticAI-managed agent calls with graceful fallback if Ollama is unavailable
-- Structural intent extraction
-- Analysis planning
-- OpenSeesPy simply supported beam tool for uniform loads
-- Result critic and engineering report generation
-- Environment variables for API endpoints and secrets
-- Python 3.12 environment with OpenSeesPy installed for the next solver layer
+- Chat interface for greetings, capability questions, and engineering requests
+- Optional Ollama or PydanticAI LLM routing with deterministic fallbacks
+- Flask web API and browser UI
+- OpenSeesPy-backed simply supported beam analysis for uniform loads
+- Closed-form beam calculations for fallback and cross-checking
+- Basic result critic for deflection limits, finite-value checks, and missing design inputs
+- Markdown report generation with assumptions, warnings, and key results
+- Python 3.12 conda environment
+- Noncommercial software license for research and educational use
 
-OpenSeesPy is installed and wired into the beam solver. Closed-form calculations remain as a fallback and cross-check.
+## Current Scope
+
+The current solver path supports a simply supported elastic beam under a full-span uniform distributed load. Given span, load, modulus of elasticity, moment of inertia, and serviceability limit, the assistant reports:
+
+- support reactions
+- maximum shear
+- maximum moment
+- midspan deflection
+- deflection limit check
+- solver status and agent trace
+
+Future solver extensions may include point loads, cantilever beams, 2D frames, trusses, load combinations, section libraries, and richer OpenSees model generation.
+
+## Safety Notice
+
+All outputs are preliminary and depend on the assumptions and units provided by the user. The assistant does not perform code compliance checks, load path validation, constructability review, connection design, detailing, or licensed engineering approval.
+
+## Project Layout
+
+```text
+app/
+  agents.py            Agent orchestration and analysis workflow
+  config.py            Environment-driven settings
+  llm.py               Ollama, PydanticAI, and fallback LLM clients
+  main.py              Flask routes and API endpoints
+  models.py            Pydantic request and response models
+  static/              Browser chat UI
+  tools/
+    beam.py            Closed-form beam calculations
+    opensees_beam.py   OpenSeesPy beam analysis tool
+    report.py          Markdown report formatter
+tests/
+  test_beam_tool.py
+  test_flask_app.py
+```
 
 ## Setup
+
+Create and activate the conda environment:
 
 ```powershell
 conda env create -f environment.yml
 conda activate struct-agent
+```
+
+Create a local environment file:
+
+```powershell
 Copy-Item .env.example .env
 ```
 
-Edit `.env` if your Ollama server or model changes.
+Edit `.env` if your Ollama endpoint, model, or timeout settings differ:
 
-The default `.env` uses `AGENT_LLM_PROVIDER=ollama`, so casual chat such as `hi` goes through the configured Ollama model. Chat responses include `source: "llm"` when the model answers and `source: "fallback"` when the model times out or is unavailable. Set `AGENT_LLM_PROVIDER=none` for deterministic fallbacks while debugging solver tools, or `pydanticai` to try the PydanticAI adapter.
+```env
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=your-model-name
+AGENT_LLM_PROVIDER=ollama
+AGENT_LLM_TIMEOUT_S=8.0
+```
+
+Supported `AGENT_LLM_PROVIDER` values:
+
+- `ollama`: use the configured Ollama model for conversational responses and agent routing
+- `pydanticai`: use the PydanticAI adapter where available
+- `none`: skip live LLM calls and use deterministic fallbacks
+
+Chat responses include a `source` field. `source: "llm"` means the model answered. `source: "fallback"` means the model timed out or was unavailable.
 
 ## Run Locally
 
@@ -36,7 +90,7 @@ The default `.env` uses `AGENT_LLM_PROVIDER=ollama`, so casual chat such as `hi`
 python -m flask --app app.main run --debug
 ```
 
-Open:
+Open the browser UI:
 
 ```text
 http://127.0.0.1:5000
@@ -50,7 +104,7 @@ Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E i
 
 ## API
 
-Chat with the assistant:
+Chat endpoint:
 
 ```powershell
 Invoke-RestMethod -Method Post `
@@ -59,7 +113,7 @@ Invoke-RestMethod -Method Post `
   -Body '{"message":"hi"}'
 ```
 
-Run an analysis through the chat endpoint:
+Analysis through chat:
 
 ```powershell
 Invoke-RestMethod -Method Post `
@@ -77,39 +131,24 @@ Invoke-RestMethod -Method Post `
   -Body '{"prompt":"Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E is 200 GPa, I is 8e-6 m4. Check deflection against L/360."}'
 ```
 
-## Project Layout
+## Testing
 
-```text
-app/
-  main.py              Flask app and routes
-  agents.py            PydanticAI-oriented multi-agent orchestration
-  config.py            Env-based settings
-  llm.py               PydanticAI/Ollama clients
-  models.py            Pydantic request/response models
-  static/              Browser UI
-  tools/
-    beam.py            Structural beam calculator
-    report.py          Markdown report formatter
+```powershell
+python -m pytest -p no:cacheprovider
 ```
-
-## Next Solver Step
-
-After V1 is running, route frame or advanced beam tasks to OpenSeesPy from `Analysis Planning Agent`. On Windows, verify `import openseespy.opensees` in the `struct-agent` environment before building higher-level solver tools around it.
 
 ## Deployment Notes
 
-Render free web service is the simplest backend-oriented deployment path for this stack. For production-like local hosting, use Waitress:
+For production-like local hosting, use Waitress:
 
 ```powershell
 waitress-serve --listen=127.0.0.1:5000 app.main:app
 ```
 
-Keep `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and `APP_SECRET_KEY` in the host's environment variable settings, not in git.
-
-If the Ollama server is private or blocked from the hosting provider, deploy Ollama on a reachable machine or swap the LLM client later while keeping the same agent interface.
+Keep `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, and `APP_SECRET_KEY` in the host environment, not in source control.
 
 ## License
 
 This project is licensed under the PolyForm Noncommercial License 1.0.0.
 
-Research, experiment, testing, personal study, educational use, and noncommercial public-interest use are permitted. Commercial use is not permitted without separate written permission from the copyright holder.
+Research, experimentation, testing, personal study, educational use, and noncommercial public-interest use are permitted. Commercial use is not permitted without separate written permission from the copyright holder.

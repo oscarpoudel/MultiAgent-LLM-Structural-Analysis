@@ -18,6 +18,8 @@ outputs/
 runs/
 reports/
 
+layout_pan.md
+
 *.log
 .DS_Store
 Thumbs.db
