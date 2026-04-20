@@ -12,43 +12,152 @@
         <p class="eyebrow">Preliminary structural analysis</p>
         <h1>Structural Agent</h1>
         <p>
-          Ask for a simple beam analysis, review assumptions, and inspect the
-          agent trace before scaling the workflow.
+          Chat through a structural question, run an OpenSeesPy beam check, and review the assumptions before moving into design decisions.
         </p>
       </section>
 
-      <section class="workspace">
-        <form id="analysis-form">
-          <label for="prompt">Engineering request</label>
-          <textarea id="prompt" name="prompt" rows="7">Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E is 200 GPa, I is 8e-6 m4. Check deflection against L/360.</textarea>
-          <button type="submit">Run analysis</button>
-        </form>
+      <section class="chat-shell" aria-label="Structural analysis chat">
+        <div id="messages" class="messages" aria-live="polite">
+          <article class="message assistant-message">
+            <p>
+              Hi, I am your structural analysis assistant. I can help with preliminary beam analysis, OpenSeesPy elastic models, reactions, shear, moment, deflection checks, warnings, and report drafts.
+            </p>
+          </article>
+        </div>
 
-        <section class="output" aria-live="polite">
-          <h2>Results</h2>
-          <pre id="results">Ready.</pre>
+        <section id="analysis-panel" class="analysis-panel hidden" aria-live="polite">
+          <div class="panel-header">
+            <p class="eyebrow">OpenSeesPy result</p>
+            <h2>Beam Check</h2>
+          </div>
+          <div id="metrics" class="metrics"></div>
+          <div id="warnings" class="warnings"></div>
+          <details>
+            <summary>Agent Trace</summary>
+            <ol id="trace-list"></ol>
+          </details>
+          <details>
+            <summary>Report Markdown</summary>
+            <pre id="report"></pre>
+          </details>
         </section>
+
+        <form id="chat-form" class="composer">
+          <label for="message">Message</label>
+          <textarea id="message" name="message" rows="4">Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E is 200 GPa, I is 8e-6 m4. Check deflection against L/360.</textarea>
+          <button type="submit">Send</button>
+        </form>
       </section>
     </main>
 
     <script>
-      const form = document.querySelector("#analysis-form");
-      const results = document.querySelector("#results");
+      const form = document.querySelector("#chat-form");
+      const messageInput = document.querySelector("#message");
+      const messages = document.querySelector("#messages");
+      const analysisPanel = document.querySelector("#analysis-panel");
+      const metrics = document.querySelector("#metrics");
+      const warnings = document.querySelector("#warnings");
+      const traceList = document.querySelector("#trace-list");
+      const report = document.querySelector("#report");
+
+      const metricLabels = {
+        solver: "Solver",
+        max_reaction_kn: "Max Reaction",
+        max_shear_kn: "Max Shear",
+        max_moment_kn_m: "Max Moment",
+        max_deflection_mm: "Max Deflection",
+        deflection_limit_mm: "Deflection Limit",
+        deflection_ok: "Deflection OK",
+        left_reaction_kn: "Left Reaction",
+        right_reaction_kn: "Right Reaction",
+        opensees_status: "OpenSees Status",
+      };
+
+      const metricUnits = {
+        max_reaction_kn: "kN",
+        max_shear_kn: "kN",
+        max_moment_kn_m: "kN-m",
+        max_deflection_mm: "mm",
+        deflection_limit_mm: "mm",
+        left_reaction_kn: "kN",
+        right_reaction_kn: "kN",
+      };
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        results.textContent = "Running agents...";
+        const message = messageInput.value.trim();
+        if (!message) return;
 
-        const prompt = new FormData(form).get("prompt");
-        const response = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
+        addMessage("user", message);
+        messageInput.value = "";
+        const pending = addMessage("assistant", "Thinking...");
+
+        try {
+          const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message }),
+          });
+          const data = await response.json();
+          pending.querySelector("p").textContent = data.message || "Done.";
+
+          if (data.response_type === "analysis" && data.analysis) {
+            renderAnalysis(data.analysis);
+          }
+        } catch (error) {
+          pending.querySelector("p").textContent = "I could not reach the analysis service. Check the Flask terminal and try again.";
+        }
+      });
+
+      function addMessage(role, text) {
+        const article = document.createElement("article");
+        article.className = `message ${role}-message`;
+        const paragraph = document.createElement("p");
+        paragraph.textContent = text;
+        article.appendChild(paragraph);
+        messages.appendChild(article);
+        messages.scrollTop = messages.scrollHeight;
+        return article;
+      }
+
+      function renderAnalysis(analysis) {
+        analysisPanel.classList.remove("hidden");
+        metrics.replaceChildren();
+        warnings.replaceChildren();
+        traceList.replaceChildren();
+
+        Object.entries(metricLabels).forEach(([key, label]) => {
+          if (!(key in analysis.results)) return;
+          const value = formatValue(analysis.results[key], metricUnits[key]);
+          const item = document.createElement("article");
+          item.className = "metric";
+          item.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+          metrics.appendChild(item);
         });
 
-        const data = await response.json();
-        results.textContent = JSON.stringify(data, null, 2);
-      });
+        analysis.warnings.forEach((warning) => {
+          const item = document.createElement("p");
+          item.textContent = warning;
+          warnings.appendChild(item);
+        });
+
+        analysis.traces.forEach((trace) => {
+          const item = document.createElement("li");
+          item.textContent = `${trace.agent}: ${trace.summary}`;
+          traceList.appendChild(item);
+        });
+
+        report.textContent = analysis.report_markdown;
+      }
+
+      function formatValue(value, unit) {
+        if (typeof value === "number") {
+          const rounded = Math.abs(value) >= 100 ? value.toFixed(2) : value.toFixed(3);
+          return unit ? `${rounded} ${unit}` : rounded;
+        }
+        if (typeof value === "boolean") return value ? "Yes" : "No";
+        return value ?? "N/A";
+      }
     </script>
   </body>
 </html>

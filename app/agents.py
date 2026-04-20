@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from dataclasses import dataclass
 from typing import Any
 
@@ -9,8 +10,15 @@ from pydantic import ValidationError
 
 from app.llm import OllamaClient
 from app.models import AgentTrace, BeamInputs
-from app.tools.beam import analyze_simply_supported_udl
+from app.tools.opensees_beam import analyze_simply_supported_udl_opensees
 from app.tools.report import format_engineering_report
+
+
+@dataclass(frozen=True)
+class ManagedAgent:
+    name: str
+    instructions: str
+    fallback: dict[str, Any]
 
 
 @dataclass
@@ -23,34 +31,57 @@ class AgentResult:
 
 
 class StructuralAgentSystem:
-    def __init__(self, llm: OllamaClient) -> None:
+    def __init__(self, llm: OllamaClient, agent_timeout_s: float = 3.0) -> None:
         self.llm = llm
+        self.agent_timeout_s = agent_timeout_s
+        self.managed_agents = {
+            "intent": ManagedAgent(
+                name="Structural Intent Agent",
+                instructions="You extract structural engineering intent. Return compact JSON only.",
+                fallback={
+                    "summary": "Detected a preliminary beam analysis request.",
+                    "structure_type": "beam",
+                    "analysis_type": "static_elastic",
+                    "boundary_conditions": "simply_supported",
+                },
+            ),
+            "planning": ManagedAgent(
+                name="Analysis Planning Agent",
+                instructions="You plan structural analysis tool execution. Return compact JSON only.",
+                fallback={
+                    "summary": "Use the OpenSeesPy simply_supported_udl_beam solver when inertia is available.",
+                    "solver": "openseespy_simply_supported_udl_beam",
+                    "required_inputs": ["span_m", "udl_kn_per_m", "elastic_modulus_gpa", "inertia_m4"],
+                },
+            ),
+        }
 
-    async def analyze(self, prompt: str) -> AgentResult:
+    def analyze(self, prompt: str) -> AgentResult:
         traces: list[AgentTrace] = []
         assumptions = [
             "Preliminary elastic analysis only.",
             "Units are interpreted from the prompt where possible.",
+            "Agent planning uses deterministic fallbacks by default; live LLM routing can be enabled in settings.",
         ]
         warnings = [
             "Not a substitute for licensed engineering review or full code compliance.",
         ]
 
-        intent = await self._intent_agent(prompt)
+        intent = self._intent_agent(prompt)
         traces.append(AgentTrace(agent="Structural Intent Agent", summary=intent["summary"], data=intent))
 
-        plan = await self._planning_agent(prompt, intent)
+        plan = self._planning_agent(prompt, intent)
         traces.append(AgentTrace(agent="Analysis Planning Agent", summary=plan["summary"], data=plan))
 
         beam_inputs = self._extract_beam_inputs(prompt, plan)
         traces.append(
             AgentTrace(
                 agent="Solver Tool Agent",
-                summary="Running simply supported beam UDL calculator.",
+                summary="Running OpenSeesPy simply supported beam UDL tool.",
                 data=beam_inputs.model_dump(),
             )
         )
-        results = analyze_simply_supported_udl(beam_inputs)
+        results = analyze_simply_supported_udl_opensees(beam_inputs)
 
         critic = self._critic_agent(results)
         warnings.extend(critic["warnings"])
@@ -65,46 +96,48 @@ class StructuralAgentSystem:
         traces.append(AgentTrace(agent="Report Agent", summary="Generated preliminary engineering report.", data={}))
         return AgentResult(assumptions, warnings, traces, results, report)
 
-    async def _intent_agent(self, prompt: str) -> dict[str, Any]:
-        system = "You extract structural engineering intent. Return compact JSON only."
+    def _intent_agent(self, prompt: str) -> dict[str, Any]:
+        agent = self.managed_agents["intent"]
         task = (
             "Identify structure type, analysis type, material, loads, boundary conditions, "
             f"and missing data from this request:\n{prompt}"
         )
-        fallback = {
-            "summary": "Detected a preliminary beam analysis request.",
-            "structure_type": "beam",
-            "analysis_type": "static_elastic",
-            "boundary_conditions": "simply_supported",
-        }
-        return await self._json_agent(system, task, fallback)
+        return self._json_agent(agent, task)
 
-    async def _planning_agent(self, prompt: str, intent: dict[str, Any]) -> dict[str, Any]:
-        system = "You plan structural analysis tool execution. Return compact JSON only."
+    def _planning_agent(self, prompt: str, intent: dict[str, Any]) -> dict[str, Any]:
+        agent = self.managed_agents["planning"]
         task = (
             "Choose a solver and required structured inputs for V1. "
             "Available solver: simply_supported_udl_beam. "
             f"Intent JSON: {json.dumps(intent)}\nUser request: {prompt}"
         )
-        fallback = {
-            "summary": "Use the deterministic simply_supported_udl_beam solver.",
-            "solver": "simply_supported_udl_beam",
-            "required_inputs": ["span_m", "udl_kn_per_m", "elastic_modulus_gpa", "inertia_m4"],
-        }
-        return await self._json_agent(system, task, fallback)
+        return self._json_agent(agent, task)
 
-    async def _json_agent(self, system: str, task: str, fallback: dict[str, Any]) -> dict[str, Any]:
+    def _json_agent(self, agent: ManagedAgent, task: str) -> dict[str, Any]:
         try:
-            raw = await self.llm.generate(system=system, prompt=task)
+            raw = self._generate_with_timeout(agent.instructions, task)
             match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
             if not match:
-                return fallback
+                return agent.fallback
             data = json.loads(match.group(0))
             if "summary" not in data:
-                data["summary"] = fallback["summary"]
+                data["summary"] = agent.fallback["summary"]
             return data
         except Exception:
-            return fallback
+            return agent.fallback
+
+    def _generate_with_timeout(self, system: str, task: str) -> str:
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(self.llm.generate, system=system, prompt=task)
+        try:
+            return future.result(timeout=self.agent_timeout_s)
+        except TimeoutError as error:
+            future.cancel()
+            executor.shutdown(wait=False, cancel_futures=True)
+            raise RuntimeError("Agent LLM call timed out") from error
+        finally:
+            if future.done():
+                executor.shutdown(wait=False, cancel_futures=True)
 
     def _extract_beam_inputs(self, prompt: str, plan: dict[str, Any]) -> BeamInputs:
         del plan
@@ -122,6 +155,11 @@ class StructuralAgentSystem:
                 200.0,
             ),
             "inertia_m4": self._find_optional_number(normalized, [r"(?:i|inertia)(?: is)? ([0-9.eE+-]+)\s*m4"]),
+            "area_m2": self._find_number(
+                normalized,
+                [r"(?:a|area)(?: is)? ([0-9.eE+-]+)\s*m2", r"([0-9.eE+-]+)\s*m2 area"],
+                1.0,
+            ),
             "section_modulus_m3": self._find_optional_number(
                 normalized,
                 [r"(?:s|section modulus)(?: is)? ([0-9.eE+-]+)\s*m3"],

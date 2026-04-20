@@ -1,43 +1,40 @@
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
+from flask import Flask, jsonify, request, send_from_directory
+from pydantic import ValidationError
 
 from app.agents import StructuralAgentSystem
 from app.config import get_settings
-from app.llm import OllamaClient
-from app.models import AnalyzeRequest, AnalyzeResponse
+from app.llm import DisabledLLMClient, OllamaClient, PydanticAIClient
+from app.models import AnalyzeRequest, AnalyzeResponse, ChatRequest, ChatResponse
 
 BASE_DIR = Path(__file__).resolve().parent
 
-app = FastAPI(
-    title="Structural Analysis Multi-Agent Prototype",
-    version="0.1.0",
-    description="Preliminary structural analysis assistant using Ollama and deterministic tools.",
+app = Flask(
+    __name__,
+    static_folder=str(BASE_DIR / "static"),
+    static_url_path="/static",
 )
-app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+app.config["JSON_SORT_KEYS"] = False
 
 
 def get_agent_system() -> StructuralAgentSystem:
     settings = get_settings()
-    llm = OllamaClient(settings.ollama_base_url, settings.ollama_model)
-    return StructuralAgentSystem(llm)
+    provider = settings.agent_llm_provider.lower()
+    if provider == "none":
+        llm = DisabledLLMClient()
+    elif provider == "pydanticai":
+        try:
+            llm = PydanticAIClient(settings.ollama_base_url, settings.ollama_model)
+        except Exception:
+            llm = OllamaClient(settings.ollama_base_url, settings.ollama_model, settings.agent_llm_timeout_s)
+    else:
+        llm = OllamaClient(settings.ollama_base_url, settings.ollama_model, settings.agent_llm_timeout_s)
+    return StructuralAgentSystem(llm, agent_timeout_s=settings.agent_llm_timeout_s)
 
 
-@app.get("/")
-async def index() -> FileResponse:
-    return FileResponse(BASE_DIR / "static" / "index.html")
-
-
-@app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
-
-
-@app.post("/api/analyze", response_model=AnalyzeResponse)
-async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
-    result = await get_agent_system().analyze(request.prompt)
+def build_analysis_response(prompt: str) -> AnalyzeResponse:
+    result = get_agent_system().analyze(prompt)
     return AnalyzeResponse(
         status="ok",
         assumptions=result.assumptions,
@@ -46,3 +43,85 @@ async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         results=result.results,
         report_markdown=result.report_markdown,
     )
+
+
+def is_structural_analysis_request(message: str) -> bool:
+    text = message.lower()
+    analysis_terms = [
+        "analyze",
+        "beam",
+        "column",
+        "frame",
+        "truss",
+        "load",
+        "span",
+        "moment",
+        "shear",
+        "deflection",
+        "stress",
+        "opensees",
+        "kN".lower(),
+        "gpa",
+        "m4",
+        "l/",
+    ]
+    return any(term in text for term in analysis_terms)
+
+
+def assistant_intro() -> str:
+    return (
+        "Hi, I am your structural analysis assistant. I can help with preliminary beam analysis, "
+        "OpenSeesPy-backed elastic models, reactions, shear, moment, deflection checks, assumptions, "
+        "warnings, and engineering report drafts. For now I am strongest on simply supported beams "
+        "with uniform loads, and we can extend me next into point loads, cantilevers, frames, and load combinations."
+    )
+
+
+@app.get("/")
+def index():
+    return send_from_directory(BASE_DIR / "static", "index.html")
+
+
+@app.get("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
+@app.post("/api/analyze")
+def analyze():
+    try:
+        analysis_request = AnalyzeRequest.model_validate(request.get_json(silent=True) or {})
+    except ValidationError as error:
+        return jsonify({"status": "error", "errors": error.errors()}), 422
+
+    response = build_analysis_response(analysis_request.prompt)
+    return jsonify(response.model_dump(mode="json"))
+
+
+@app.post("/api/chat")
+def chat():
+    try:
+        chat_request = ChatRequest.model_validate(request.get_json(silent=True) or {})
+    except ValidationError as error:
+        return jsonify({"status": "error", "errors": error.errors()}), 422
+
+    if not is_structural_analysis_request(chat_request.message):
+        response = ChatResponse(
+            status="ok",
+            response_type="conversation",
+            message=assistant_intro(),
+        )
+        return jsonify(response.model_dump(mode="json"))
+
+    analysis = build_analysis_response(chat_request.message)
+    response = ChatResponse(
+        status="ok",
+        response_type="analysis",
+        message="I ran the preliminary OpenSeesPy analysis and summarized the key checks below.",
+        analysis=analysis,
+    )
+    return jsonify(response.model_dump(mode="json"))
+
+
+if __name__ == "__main__":
+    app.run(debug=True)

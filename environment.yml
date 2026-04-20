@@ -2,12 +2,17 @@ name: struct-agent
 channels:
   - conda-forge
 dependencies:
-  - python=3.11
+  - python=3.12
   - pip
   - pip:
-      - fastapi==0.115.6
-      - uvicorn[standard]==0.34.0
+      - flask==3.1.2
       - httpx==0.28.1
-      - pydantic-settings==2.7.1
-      - python-dotenv==1.0.1
+      - openseespy
+      - pydantic==2.13.2
+      - pydantic-ai==1.5.0
+      - pydantic-settings==2.13.1
+      - python-dotenv==1.2.2
       - pytest==8.3.4
+      - uvicorn==0.44.0
+      - waitress==3.0.2
+      - websockets==16.0

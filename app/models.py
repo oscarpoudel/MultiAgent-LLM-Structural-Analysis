@@ -7,11 +7,16 @@ class AnalyzeRequest(BaseModel):
     prompt: str = Field(..., min_length=5)
 
 
+class ChatRequest(BaseModel):
+    message: str = Field(..., min_length=1)
+
+
 class BeamInputs(BaseModel):
     span_m: float
     udl_kn_per_m: float
     elastic_modulus_gpa: float = 200.0
     inertia_m4: float | None = None
+    area_m2: float = 1.0
     section_modulus_m3: float | None = None
     deflection_limit_ratio: float = 360.0
 
@@ -29,3 +34,10 @@ class AnalyzeResponse(BaseModel):
     traces: list[AgentTrace]
     results: dict[str, Any]
     report_markdown: str
+
+
+class ChatResponse(BaseModel):
+    status: str
+    response_type: str
+    message: str
+    analysis: AnalyzeResponse | None = None
