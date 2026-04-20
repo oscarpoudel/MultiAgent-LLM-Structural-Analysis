@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Structural Analysis Agent</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">Preliminary structural analysis</p>
+        <h1>Structural Agent</h1>
+        <p>
+          Ask for a simple beam analysis, review assumptions, and inspect the
+          agent trace before scaling the workflow.
+        </p>
+      </section>
+
+      <section class="workspace">
+        <form id="analysis-form">
+          <label for="prompt">Engineering request</label>
+          <textarea id="prompt" name="prompt" rows="7">Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E is 200 GPa, I is 8e-6 m4. Check deflection against L/360.</textarea>
+          <button type="submit">Run analysis</button>
+        </form>
+
+        <section class="output" aria-live="polite">
+          <h2>Results</h2>
+          <pre id="results">Ready.</pre>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const form = document.querySelector("#analysis-form");
+      const results = document.querySelector("#results");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        results.textContent = "Running agents...";
+
+        const prompt = new FormData(form).get("prompt");
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        });
+
+        const data = await response.json();
+        results.textContent = JSON.stringify(data, null, 2);
+      });
+    </script>
+  </body>
+</html>
