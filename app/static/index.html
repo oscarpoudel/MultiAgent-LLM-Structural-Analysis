@@ -5,63 +5,383 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Structural Analysis Agent</title>
     <link rel="stylesheet" href="/static/styles.css" />
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
   </head>
   <body>
+    <header class="top-bar">
+      <div class="top-bar-inner">
+        <h1 class="logo">StructAgent</h1>
+        <nav class="top-nav">
+          <button class="nav-btn active" data-tab="chat">Chat</button>
+          <button class="nav-btn" data-tab="forms">Forms</button>
+          <button class="nav-btn" data-tab="sections">Sections</button>
+          <button class="nav-btn" data-tab="history">History</button>
+        </nav>
+        <button id="theme-toggle" class="icon-btn" title="Toggle dark mode">
+          <span id="theme-icon">&#9790;</span>
+        </button>
+      </div>
+    </header>
+
     <main>
-      <section class="intro">
-        <p class="eyebrow">Preliminary structural analysis</p>
-        <h1>Structural Agent</h1>
-        <p>
-          Chat through a structural question, run an OpenSeesPy beam check, and review the assumptions before moving into design decisions.
-        </p>
+      <!-- ============================================================ -->
+      <!-- TAB: Chat                                                     -->
+      <!-- ============================================================ -->
+      <section id="tab-chat" class="tab-content active">
+        <section class="chat-shell">
+          <div id="messages" class="messages" aria-live="polite">
+            <article class="message assistant-message">
+              <p>
+                Hi, I am your structural analysis assistant. I can help with beam analysis
+                (simply supported, cantilever, fixed-fixed), 2D truss and frame analysis,
+                column buckling checks, and AISC section lookups. Just describe your problem
+                in natural language.
+              </p>
+            </article>
+          </div>
+
+          <section id="analysis-panel" class="analysis-panel hidden" aria-live="polite">
+            <div class="panel-header">
+              <p class="eyebrow" id="analysis-type-label">Analysis result</p>
+              <h2 id="analysis-title">Results</h2>
+              <div class="export-btns">
+                <button id="btn-export-csv" class="btn-sm">Export CSV</button>
+                <button id="btn-export-report" class="btn-sm">Export Report</button>
+              </div>
+            </div>
+            <div id="metrics" class="metrics"></div>
+            <div id="warnings" class="warnings"></div>
+
+            <!-- Diagrams -->
+            <div id="diagrams-section" class="hidden">
+              <h3>Diagrams</h3>
+              <div class="diagram-tabs">
+                <button class="diagram-tab active" data-diagram="sfd">SFD</button>
+                <button class="diagram-tab" data-diagram="bmd">BMD</button>
+                <button class="diagram-tab" data-diagram="deflection">Deflection</button>
+              </div>
+              <div id="diagram-plot" class="diagram-plot"></div>
+            </div>
+
+            <!-- Truss/Frame detailed results -->
+            <div id="detailed-results" class="hidden">
+              <details>
+                <summary>Detailed Results</summary>
+                <pre id="detailed-json"></pre>
+              </details>
+            </div>
+
+            <details>
+              <summary>Agent Trace</summary>
+              <ol id="trace-list"></ol>
+            </details>
+            <details>
+              <summary>Report Markdown</summary>
+              <pre id="report"></pre>
+            </details>
+          </section>
+
+          <form id="chat-form" class="composer">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" rows="3" placeholder="Describe your structural analysis problem...">Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E is 200 GPa, I is 8e-6 m4. Check deflection against L/360.</textarea>
+            <div class="composer-actions">
+              <select id="example-select" class="example-select">
+                <option value="">Load example...</option>
+                <option value="beam_ss">Simply Supported Beam (UDL)</option>
+                <option value="beam_cantilever">Cantilever Beam</option>
+                <option value="beam_point">Beam with Point Load</option>
+                <option value="beam_combined">Combined Loading</option>
+                <option value="beam_fixed">Fixed-Fixed Beam</option>
+                <option value="truss">2D Truss</option>
+                <option value="frame">Portal Frame</option>
+                <option value="column">Column Buckling</option>
+              </select>
+              <button type="submit">Analyze</button>
+            </div>
+          </form>
+        </section>
       </section>
 
-      <section class="chat-shell" aria-label="Structural analysis chat">
-        <div id="messages" class="messages" aria-live="polite">
-          <article class="message assistant-message">
-            <p>
-              Hi, I am your structural analysis assistant. I can help with preliminary beam analysis, OpenSeesPy elastic models, reactions, shear, moment, deflection checks, warnings, and report drafts.
-            </p>
-          </article>
-        </div>
+      <!-- ============================================================ -->
+      <!-- TAB: Structured Forms                                         -->
+      <!-- ============================================================ -->
+      <section id="tab-forms" class="tab-content hidden">
+        <div class="forms-layout">
+          <div class="form-panel">
+            <h2>Quick Analysis</h2>
+            <div class="form-tabs">
+              <button class="form-tab active" data-form="beam">Beam</button>
+              <button class="form-tab" data-form="column">Column</button>
+              <button class="form-tab" data-form="truss-form">Truss</button>
+              <button class="form-tab" data-form="frame-form">Frame</button>
+            </div>
 
-        <section id="analysis-panel" class="analysis-panel hidden" aria-live="polite">
-          <div class="panel-header">
-            <p class="eyebrow">OpenSeesPy result</p>
-            <h2>Beam Check</h2>
+            <!-- Beam Form -->
+            <form id="beam-form" class="struct-form active">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Support Type</label>
+                  <select id="f-support">
+                    <option value="simply_supported">Simply Supported</option>
+                    <option value="cantilever">Cantilever</option>
+                    <option value="fixed_fixed">Fixed-Fixed</option>
+                    <option value="propped_cantilever">Propped Cantilever</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Span (m)</label>
+                  <input type="number" id="f-span" value="6" step="0.1" min="0.1" />
+                </div>
+                <div class="form-group">
+                  <label>UDL (kN/m)</label>
+                  <input type="number" id="f-udl" value="20" step="0.1" min="0" />
+                </div>
+                <div class="form-group">
+                  <label>E (GPa)</label>
+                  <input type="number" id="f-E" value="200" step="1" min="1" />
+                </div>
+                <div class="form-group">
+                  <label>I (m4)</label>
+                  <input type="text" id="f-I" value="8e-6" />
+                </div>
+                <div class="form-group">
+                  <label>Area (m2)</label>
+                  <input type="text" id="f-A" value="1.0" />
+                </div>
+                <div class="form-group">
+                  <label>Section Modulus (m3)</label>
+                  <input type="text" id="f-S" value="" placeholder="Optional" />
+                </div>
+                <div class="form-group">
+                  <label>Deflection Limit (L/...)</label>
+                  <input type="number" id="f-defl-ratio" value="360" step="1" min="1" />
+                </div>
+              </div>
+              <div class="form-group" style="margin-top:12px">
+                <label>Point Loads <small>(one per line: magnitude_kN position_m)</small></label>
+                <textarea id="f-point-loads" rows="2" placeholder="e.g. 50 3"></textarea>
+              </div>
+              <div class="form-group" style="margin-top:8px">
+                <label>Section Lookup</label>
+                <div class="section-lookup-row">
+                  <input type="text" id="f-section-search" placeholder="e.g. W310X67" />
+                  <button type="button" id="f-section-apply" class="btn-sm">Apply</button>
+                </div>
+                <small id="f-section-info" class="section-info"></small>
+              </div>
+              <button type="submit" class="btn-primary" style="margin-top:14px">Run Beam Analysis</button>
+            </form>
+
+            <!-- Column Form -->
+            <form id="column-form" class="struct-form hidden">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>End Condition</label>
+                  <select id="fc-end">
+                    <option value="pinned_pinned">Pinned-Pinned (K=1.0)</option>
+                    <option value="fixed_free">Fixed-Free (K=2.0)</option>
+                    <option value="fixed_pinned">Fixed-Pinned (K=0.7)</option>
+                    <option value="fixed_fixed">Fixed-Fixed (K=0.5)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Length (m)</label>
+                  <input type="number" id="fc-length" value="4" step="0.1" min="0.1" />
+                </div>
+                <div class="form-group">
+                  <label>Area (m2)</label>
+                  <input type="text" id="fc-area" value="0.01" />
+                </div>
+                <div class="form-group">
+                  <label>I (m4)</label>
+                  <input type="text" id="fc-I" value="1e-4" />
+                </div>
+                <div class="form-group">
+                  <label>E (GPa)</label>
+                  <input type="number" id="fc-E" value="200" step="1" />
+                </div>
+                <div class="form-group">
+                  <label>Fy (MPa)</label>
+                  <input type="number" id="fc-Fy" value="250" step="1" />
+                </div>
+                <div class="form-group">
+                  <label>Axial Load (kN)</label>
+                  <input type="number" id="fc-load" value="500" step="1" />
+                </div>
+              </div>
+              <button type="submit" class="btn-primary" style="margin-top:14px">Run Column Analysis</button>
+            </form>
+
+            <!-- Truss Form -->
+            <form id="truss-form-el" class="struct-form hidden">
+              <p class="form-hint">Define a simple truss by specifying span, height, and load. Or use the chat for custom node/member definitions.</p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Span (m)</label>
+                  <input type="number" id="ft-span" value="6" step="0.1" />
+                </div>
+                <div class="form-group">
+                  <label>Height (m)</label>
+                  <input type="number" id="ft-height" value="2" step="0.1" />
+                </div>
+                <div class="form-group">
+                  <label>Load at top node (kN)</label>
+                  <input type="number" id="ft-load" value="50" step="1" />
+                </div>
+              </div>
+              <button type="submit" class="btn-primary" style="margin-top:14px">Run Truss Analysis</button>
+            </form>
+
+            <!-- Frame Form -->
+            <form id="frame-form-el" class="struct-form hidden">
+              <p class="form-hint">Define a portal frame with span, height, and loads.</p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Bay Width (m)</label>
+                  <input type="number" id="ff-width" value="6" step="0.1" />
+                </div>
+                <div class="form-group">
+                  <label>Column Height (m)</label>
+                  <input type="number" id="ff-height" value="4" step="0.1" />
+                </div>
+                <div class="form-group">
+                  <label>Gravity UDL on beam (kN/m)</label>
+                  <input type="number" id="ff-gravity" value="20" step="0.1" />
+                </div>
+                <div class="form-group">
+                  <label>Lateral Load (kN)</label>
+                  <input type="number" id="ff-lateral" value="10" step="0.1" />
+                </div>
+              </div>
+              <button type="submit" class="btn-primary" style="margin-top:14px">Run Frame Analysis</button>
+            </form>
           </div>
-          <div id="metrics" class="metrics"></div>
-          <div id="warnings" class="warnings"></div>
-          <details>
-            <summary>Agent Trace</summary>
-            <ol id="trace-list"></ol>
-          </details>
-          <details>
-            <summary>Report Markdown</summary>
-            <pre id="report"></pre>
-          </details>
-        </section>
 
-        <form id="chat-form" class="composer">
-          <label for="message">Message</label>
-          <textarea id="message" name="message" rows="4">Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E is 200 GPa, I is 8e-6 m4. Check deflection against L/360.</textarea>
-          <button type="submit">Send</button>
-        </form>
+          <div class="form-results-panel">
+            <div id="form-results" class="form-results">
+              <p class="placeholder-text">Run an analysis to see results here.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TAB: Sections                                                 -->
+      <!-- ============================================================ -->
+      <section id="tab-sections" class="tab-content hidden">
+        <div class="sections-layout">
+          <div class="sections-controls">
+            <h2>Steel Section Library</h2>
+            <div class="section-search-row">
+              <select id="section-type-filter">
+                <option value="all">All Types</option>
+                <option value="w">W-Shapes</option>
+                <option value="hss">HSS</option>
+                <option value="l">Angles</option>
+              </select>
+              <input type="text" id="section-search-input" placeholder="Search sections (e.g. W310)..." />
+              <button id="section-search-btn" class="btn-sm">Search</button>
+            </div>
+          </div>
+          <div id="section-results" class="section-results">
+            <p class="placeholder-text">Search for a section to see its properties.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- TAB: History                                                  -->
+      <!-- ============================================================ -->
+      <section id="tab-history" class="tab-content hidden">
+        <div class="history-layout">
+          <h2>Analysis History</h2>
+          <button id="load-history-btn" class="btn-sm">Refresh</button>
+          <div id="history-list" class="history-list">
+            <p class="placeholder-text">Click Refresh to load analysis history.</p>
+          </div>
+        </div>
       </section>
     </main>
 
     <script>
-      const form = document.querySelector("#chat-form");
-      const messageInput = document.querySelector("#message");
-      const messages = document.querySelector("#messages");
-      const analysisPanel = document.querySelector("#analysis-panel");
-      const metrics = document.querySelector("#metrics");
-      const warnings = document.querySelector("#warnings");
-      const traceList = document.querySelector("#trace-list");
-      const report = document.querySelector("#report");
+      // ================================================================
+      // State
+      // ================================================================
+      let lastAnalysis = null;
+      let currentDiagramType = "sfd";
+
+      // ================================================================
+      // Tab Navigation
+      // ================================================================
+      document.querySelectorAll(".nav-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".nav-btn").forEach((b) => b.classList.remove("active"));
+          document.querySelectorAll(".tab-content").forEach((t) => t.classList.remove("active"));
+          btn.classList.add("active");
+          const tab = document.getElementById("tab-" + btn.dataset.tab);
+          if (tab) {
+            tab.classList.add("active");
+            tab.classList.remove("hidden");
+          }
+          document.querySelectorAll(".tab-content:not(.active)").forEach((t) => t.classList.add("hidden"));
+        });
+      });
+
+      // ================================================================
+      // Dark Mode
+      // ================================================================
+      const themeToggle = document.getElementById("theme-toggle");
+      const themeIcon = document.getElementById("theme-icon");
+      function setTheme(dark) {
+        document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+        themeIcon.textContent = dark ? "\u2600" : "\u263E";
+        localStorage.setItem("theme", dark ? "dark" : "light");
+      }
+      themeToggle.addEventListener("click", () => {
+        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        setTheme(!isDark);
+      });
+      // Init theme
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark") setTheme(true);
+
+      // ================================================================
+      // Example prompts
+      // ================================================================
+      const examples = {
+        beam_ss: "Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E is 200 GPa, I is 8e-6 m4. Check deflection against L/360.",
+        beam_cantilever: "Analyze a cantilever beam with span 4 m, UDL 15 kN/m, E 200 GPa, I 5e-5 m4. Check deflection against L/180.",
+        beam_point: "Analyze a simply supported beam with span 8 m and a point load of 100 kN at 4 m. E is 200 GPa, I is 3e-5 m4.",
+        beam_combined: "Analyze a simply supported beam, span 10 m, UDL 12 kN/m, point load 80 kN at 5 m, point load 40 kN at 7 m. E 200 GPa, I 2e-4 m4. Check L/360.",
+        beam_fixed: "Analyze a fixed-fixed beam. Span 5 m, uniform load 25 kN/m, E 200 GPa, I 1e-4 m4.",
+        truss: "Analyze a 2D truss with span 8 m, height 3 m, and a load of 100 kN at the top node.",
+        frame: "Analyze a portal frame with bay width 6 m, column height 4 m, gravity load 20 kN/m on beam, and lateral load 15 kN.",
+        column: "Check a column for buckling. Length 5 m, pinned-pinned, area 0.008 m2, I 6e-5 m4, E 200 GPa, Fy 345 MPa, axial load 800 kN.",
+      };
+
+      const exampleSelect = document.getElementById("example-select");
+      exampleSelect.addEventListener("change", () => {
+        if (examples[exampleSelect.value]) {
+          document.getElementById("message").value = examples[exampleSelect.value];
+        }
+        exampleSelect.value = "";
+      });
+
+      // ================================================================
+      // Chat Form
+      // ================================================================
+      const form = document.getElementById("chat-form");
+      const messageInput = document.getElementById("message");
+      const messagesEl = document.getElementById("messages");
+      const analysisPanel = document.getElementById("analysis-panel");
+      const metricsEl = document.getElementById("metrics");
+      const warningsEl = document.getElementById("warnings");
+      const traceList = document.getElementById("trace-list");
+      const reportEl = document.getElementById("report");
 
       const metricLabels = {
         solver: "Solver",
+        support_type: "Support Type",
         max_reaction_kn: "Max Reaction",
         max_shear_kn: "Max Shear",
         max_moment_kn_m: "Max Moment",
@@ -71,16 +391,33 @@
         left_reaction_kn: "Left Reaction",
         right_reaction_kn: "Right Reaction",
         opensees_status: "OpenSees Status",
+        bending_stress_mpa: "Bending Stress",
+        // Column
+        slenderness_ratio: "Slenderness (KL/r)",
+        slenderness_class: "Slenderness Class",
+        euler_buckling_load_kn: "Euler Load",
+        nominal_strength_kn: "Nominal Strength",
+        design_strength_kn: "Design Strength",
+        applied_load_kn: "Applied Load",
+        utilization_ratio: "Utilization",
+        capacity_ok: "Capacity OK",
+        axial_stress_mpa: "Axial Stress",
+        critical_stress_mpa: "Critical Stress",
+        // Truss / Frame
+        max_displacement_mm: "Max Displacement",
+        num_nodes: "Nodes",
+        num_members: "Members",
       };
 
       const metricUnits = {
-        max_reaction_kn: "kN",
-        max_shear_kn: "kN",
-        max_moment_kn_m: "kN-m",
-        max_deflection_mm: "mm",
-        deflection_limit_mm: "mm",
-        left_reaction_kn: "kN",
-        right_reaction_kn: "kN",
+        max_reaction_kn: "kN", max_shear_kn: "kN", max_moment_kn_m: "kN-m",
+        max_deflection_mm: "mm", deflection_limit_mm: "mm",
+        left_reaction_kn: "kN", right_reaction_kn: "kN",
+        bending_stress_mpa: "MPa",
+        euler_buckling_load_kn: "kN", nominal_strength_kn: "kN",
+        design_strength_kn: "kN", applied_load_kn: "kN",
+        axial_stress_mpa: "MPa", critical_stress_mpa: "MPa",
+        max_displacement_mm: "mm",
       };
 
       form.addEventListener("submit", async (event) => {
@@ -90,7 +427,7 @@
 
         addMessage("user", message);
         messageInput.value = "";
-        const pending = addMessage("assistant", "Thinking...");
+        const pending = addMessage("assistant", "Analyzing...");
 
         try {
           const response = await fetch("/api/chat", {
@@ -102,10 +439,12 @@
           pending.querySelector("p").textContent = data.message || "Done.";
 
           if (data.response_type === "analysis" && data.analysis) {
+            lastAnalysis = data.analysis;
             renderAnalysis(data.analysis);
           }
         } catch (error) {
-          pending.querySelector("p").textContent = "I could not reach the analysis service. Check the Flask terminal and try again.";
+          pending.querySelector("p").textContent =
+            "Could not reach the analysis service. Check the Flask terminal.";
         }
       });
 
@@ -115,49 +454,524 @@
         const paragraph = document.createElement("p");
         paragraph.textContent = text;
         article.appendChild(paragraph);
-        messages.appendChild(article);
-        messages.scrollTop = messages.scrollHeight;
+        messagesEl.appendChild(article);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
         return article;
       }
 
       function renderAnalysis(analysis) {
         analysisPanel.classList.remove("hidden");
-        metrics.replaceChildren();
-        warnings.replaceChildren();
+        metricsEl.replaceChildren();
+        warningsEl.replaceChildren();
         traceList.replaceChildren();
 
+        // Update header
+        const typeLabel = document.getElementById("analysis-type-label");
+        const title = document.getElementById("analysis-title");
+        const aType = analysis.analysis_type || "beam";
+        const typeNames = { beam: "Beam Analysis", truss: "Truss Analysis", frame: "Frame Analysis", column: "Column Analysis" };
+        typeLabel.textContent = typeNames[aType] || "Analysis Result";
+        title.textContent = (analysis.results.support_type || aType).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) + " Check";
+
+        // Metrics
         Object.entries(metricLabels).forEach(([key, label]) => {
           if (!(key in analysis.results)) return;
           const value = formatValue(analysis.results[key], metricUnits[key]);
           const item = document.createElement("article");
           item.className = "metric";
+          // Color-code boolean metrics
+          const boolVal = analysis.results[key];
+          if (typeof boolVal === "boolean") {
+            item.classList.add(boolVal ? "metric-pass" : "metric-fail");
+          }
           item.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
-          metrics.appendChild(item);
+          metricsEl.appendChild(item);
         });
 
+        // Warnings
         analysis.warnings.forEach((warning) => {
           const item = document.createElement("p");
           item.textContent = warning;
-          warnings.appendChild(item);
+          warningsEl.appendChild(item);
         });
 
+        // Traces
         analysis.traces.forEach((trace) => {
           const item = document.createElement("li");
           item.textContent = `${trace.agent}: ${trace.summary}`;
           traceList.appendChild(item);
         });
 
-        report.textContent = analysis.report_markdown;
+        // Report
+        reportEl.textContent = analysis.report_markdown;
+
+        // Diagrams (beam only)
+        const diagramSection = document.getElementById("diagrams-section");
+        if (analysis.diagrams && analysis.diagrams.positions && analysis.diagrams.positions.length > 0) {
+          diagramSection.classList.remove("hidden");
+          currentDiagramType = "sfd";
+          document.querySelectorAll(".diagram-tab").forEach(t => t.classList.remove("active"));
+          document.querySelector('.diagram-tab[data-diagram="sfd"]').classList.add("active");
+          plotDiagram(analysis.diagrams, "sfd");
+        } else {
+          diagramSection.classList.add("hidden");
+        }
+
+        // Detailed results for truss/frame
+        const detailedSection = document.getElementById("detailed-results");
+        if (aType === "truss" || aType === "frame") {
+          detailedSection.classList.remove("hidden");
+          const detailedJson = document.getElementById("detailed-json");
+          const detail = {};
+          if (analysis.results.reactions) detail.reactions = analysis.results.reactions;
+          if (analysis.results.member_forces) detail.member_forces = analysis.results.member_forces;
+          if (analysis.results.node_displacements) detail.node_displacements = analysis.results.node_displacements;
+          detailedJson.textContent = JSON.stringify(detail, null, 2);
+        } else {
+          detailedSection.classList.add("hidden");
+        }
       }
 
       function formatValue(value, unit) {
         if (typeof value === "number") {
-          const rounded = Math.abs(value) >= 100 ? value.toFixed(2) : value.toFixed(3);
+          const rounded = Math.abs(value) >= 100 ? value.toFixed(2) : value.toPrecision(4);
           return unit ? `${rounded} ${unit}` : rounded;
         }
-        if (typeof value === "boolean") return value ? "Yes" : "No";
-        return value ?? "N/A";
+        if (typeof value === "boolean") return value ? "Pass" : "Fail";
+        if (value === null || value === undefined) return "N/A";
+        return String(value);
       }
+
+      // ================================================================
+      // Diagram Plotting
+      // ================================================================
+      document.querySelectorAll(".diagram-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll(".diagram-tab").forEach((t) => t.classList.remove("active"));
+          tab.classList.add("active");
+          currentDiagramType = tab.dataset.diagram;
+          if (lastAnalysis && lastAnalysis.diagrams) {
+            plotDiagram(lastAnalysis.diagrams, currentDiagramType);
+          }
+        });
+      });
+
+      function plotDiagram(diagrams, type) {
+        const plotDiv = document.getElementById("diagram-plot");
+        const x = diagrams.positions;
+        let y, ylabel, title, color;
+
+        if (type === "sfd") {
+          y = diagrams.shear_kn;
+          ylabel = "Shear (kN)";
+          title = "Shear Force Diagram";
+          color = "#2563eb";
+        } else if (type === "bmd") {
+          y = diagrams.moment_kn_m;
+          ylabel = "Moment (kN-m)";
+          title = "Bending Moment Diagram";
+          color = "#dc2626";
+        } else {
+          y = diagrams.deflection_mm;
+          ylabel = "Deflection (mm)";
+          title = "Deflection Shape";
+          color = "#059669";
+        }
+
+        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+        const bgColor = isDark ? "#1e2530" : "#ffffff";
+        const textColor = isDark ? "#c8d0da" : "#172026";
+        const gridColor = isDark ? "#2d3748" : "#e2e8f0";
+
+        const trace = {
+          x: x, y: y, type: "scatter", mode: "lines",
+          fill: "tozeroy", fillcolor: color + "18",
+          line: { color: color, width: 2 },
+          name: ylabel,
+        };
+
+        const layout = {
+          title: { text: title, font: { size: 14, color: textColor } },
+          xaxis: { title: "Position (m)", gridcolor: gridColor, color: textColor },
+          yaxis: { title: ylabel, gridcolor: gridColor, color: textColor },
+          plot_bgcolor: bgColor,
+          paper_bgcolor: bgColor,
+          margin: { t: 40, r: 20, b: 50, l: 60 },
+          height: 280,
+          font: { family: "inherit", color: textColor },
+        };
+
+        Plotly.newPlot(plotDiv, [trace], layout, { responsive: true, displayModeBar: false });
+      }
+
+      // ================================================================
+      // Export Buttons
+      // ================================================================
+      document.getElementById("btn-export-csv").addEventListener("click", async () => {
+        if (!lastAnalysis) return;
+        try {
+          const resp = await fetch("/api/export/csv", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ results: lastAnalysis.results }),
+          });
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = "analysis_results.csv"; a.click();
+          URL.revokeObjectURL(url);
+        } catch (e) { alert("Export failed"); }
+      });
+
+      document.getElementById("btn-export-report").addEventListener("click", async () => {
+        if (!lastAnalysis) return;
+        try {
+          const resp = await fetch("/api/export/report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ report_markdown: lastAnalysis.report_markdown }),
+          });
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = "analysis_report.md"; a.click();
+          URL.revokeObjectURL(url);
+        } catch (e) { alert("Export failed"); }
+      });
+
+      // ================================================================
+      // Structured Forms
+      // ================================================================
+      document.querySelectorAll(".form-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll(".form-tab").forEach((t) => t.classList.remove("active"));
+          document.querySelectorAll(".struct-form").forEach((f) => { f.classList.add("hidden"); f.classList.remove("active"); });
+          tab.classList.add("active");
+          const formMap = {
+            beam: "beam-form",
+            column: "column-form",
+            "truss-form": "truss-form-el",
+            "frame-form": "frame-form-el",
+          };
+          const formEl = document.getElementById(formMap[tab.dataset.form]);
+          if (formEl) { formEl.classList.remove("hidden"); formEl.classList.add("active"); }
+        });
+      });
+
+      // Beam form submit
+      document.getElementById("beam-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const support = document.getElementById("f-support").value;
+        const span = document.getElementById("f-span").value;
+        const udl = document.getElementById("f-udl").value;
+        const E = document.getElementById("f-E").value;
+        const I = document.getElementById("f-I").value;
+        const S = document.getElementById("f-S").value;
+        const ratio = document.getElementById("f-defl-ratio").value;
+        const plText = document.getElementById("f-point-loads").value.trim();
+
+        let prompt = `Analyze a ${support.replace(/_/g, " ")} beam. Span is ${span} m`;
+        if (parseFloat(udl) > 0) prompt += `, uniform load is ${udl} kN/m`;
+        prompt += `, E is ${E} GPa`;
+        if (I) prompt += `, I is ${I} m4`;
+        if (S) prompt += `, section modulus is ${S} m3`;
+        prompt += `. Check deflection against L/${ratio}`;
+
+        if (plText) {
+          const lines = plText.split("\n").filter(l => l.trim());
+          lines.forEach(line => {
+            const parts = line.trim().split(/\s+/);
+            if (parts.length >= 2) {
+              prompt += `. Point load ${parts[0]} kN at ${parts[1]} m`;
+            }
+          });
+        }
+        prompt += ".";
+
+        await runFormAnalysis(prompt);
+      });
+
+      // Column form submit
+      document.getElementById("column-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const end = document.getElementById("fc-end").value;
+        const L = document.getElementById("fc-length").value;
+        const A = document.getElementById("fc-area").value;
+        const I = document.getElementById("fc-I").value;
+        const E = document.getElementById("fc-E").value;
+        const Fy = document.getElementById("fc-Fy").value;
+        const P = document.getElementById("fc-load").value;
+
+        const prompt = `Check a column for buckling. Length ${L} m, ${end.replace(/_/g, "-")}, area ${A} m2, I ${I} m4, E ${E} GPa, Fy ${Fy} MPa, axial load ${P} kN.`;
+        await runFormAnalysis(prompt);
+      });
+
+      // Truss form submit
+      document.getElementById("truss-form-el").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const span = document.getElementById("ft-span").value;
+        const height = document.getElementById("ft-height").value;
+        const load = document.getElementById("ft-load").value;
+        const prompt = `Analyze a 2D truss with span ${span} m, height ${height} m, and a load of ${load} kN at the top node.`;
+        await runFormAnalysis(prompt);
+      });
+
+      // Frame form submit
+      document.getElementById("frame-form-el").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const w = document.getElementById("ff-width").value;
+        const h = document.getElementById("ff-height").value;
+        const g = document.getElementById("ff-gravity").value;
+        const lat = document.getElementById("ff-lateral").value;
+        let prompt = `Analyze a portal frame with bay width ${w} m, column height ${h} m`;
+        if (parseFloat(g) > 0) prompt += `, gravity load ${g} kN/m on beam`;
+        if (parseFloat(lat) > 0) prompt += `, lateral load ${lat} kN`;
+        prompt += ".";
+        await runFormAnalysis(prompt);
+      });
+
+      async function runFormAnalysis(prompt) {
+        const resultsDiv = document.getElementById("form-results");
+        resultsDiv.innerHTML = '<p class="placeholder-text">Analyzing...</p>';
+        try {
+          const resp = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: prompt }),
+          });
+          const data = await resp.json();
+          if (data.response_type === "analysis" && data.analysis) {
+            lastAnalysis = data.analysis;
+            renderFormResults(data.analysis, resultsDiv);
+          } else {
+            resultsDiv.innerHTML = `<p>${data.message || "No analysis result."}</p>`;
+          }
+        } catch (err) {
+          resultsDiv.innerHTML = '<p class="placeholder-text">Error: Could not reach server.</p>';
+        }
+      }
+
+      function renderFormResults(analysis, container) {
+        container.replaceChildren();
+        const aType = analysis.analysis_type || "beam";
+        const typeNames = { beam: "Beam Analysis", truss: "Truss Analysis", frame: "Frame Analysis", column: "Column Analysis" };
+
+        // Header
+        const header = document.createElement("div");
+        header.className = "panel-header";
+        header.innerHTML = `<p class="eyebrow">${typeNames[aType] || "Result"}</p><h2>${(analysis.results.solver || "").replace(/_/g, " ")}</h2>`;
+        container.appendChild(header);
+
+        // Metrics grid
+        const metricsGrid = document.createElement("div");
+        metricsGrid.className = "metrics";
+        Object.entries(metricLabels).forEach(([key, label]) => {
+          if (!(key in analysis.results)) return;
+          const value = formatValue(analysis.results[key], metricUnits[key]);
+          const item = document.createElement("article");
+          item.className = "metric";
+          const boolVal = analysis.results[key];
+          if (typeof boolVal === "boolean") item.classList.add(boolVal ? "metric-pass" : "metric-fail");
+          item.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+          metricsGrid.appendChild(item);
+        });
+        container.appendChild(metricsGrid);
+
+        // Warnings
+        if (analysis.warnings.length) {
+          const warnDiv = document.createElement("div");
+          warnDiv.className = "warnings";
+          analysis.warnings.forEach(w => {
+            const p = document.createElement("p");
+            p.textContent = w;
+            warnDiv.appendChild(p);
+          });
+          container.appendChild(warnDiv);
+        }
+
+        // Diagrams for beam
+        if (analysis.diagrams && analysis.diagrams.positions && analysis.diagrams.positions.length > 0) {
+          const diagDiv = document.createElement("div");
+          diagDiv.id = "form-diagram-plot";
+          diagDiv.className = "diagram-plot";
+          diagDiv.style.marginTop = "16px";
+          container.appendChild(diagDiv);
+
+          // Plot all three
+          const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+          const bgColor = isDark ? "#1e2530" : "#ffffff";
+          const textColor = isDark ? "#c8d0da" : "#172026";
+          const gridColor = isDark ? "#2d3748" : "#e2e8f0";
+
+          const traces = [
+            { x: analysis.diagrams.positions, y: analysis.diagrams.shear_kn, name: "Shear (kN)", line: { color: "#2563eb" } },
+            { x: analysis.diagrams.positions, y: analysis.diagrams.moment_kn_m, name: "Moment (kN-m)", line: { color: "#dc2626" }, yaxis: "y2" },
+          ];
+          const layout = {
+            title: { text: "SFD & BMD", font: { size: 14, color: textColor } },
+            xaxis: { title: "Position (m)", gridcolor: gridColor, color: textColor },
+            yaxis: { title: "Shear (kN)", gridcolor: gridColor, color: textColor, side: "left" },
+            yaxis2: { title: "Moment (kN-m)", overlaying: "y", side: "right", color: textColor },
+            plot_bgcolor: bgColor, paper_bgcolor: bgColor,
+            margin: { t: 40, r: 60, b: 50, l: 60 }, height: 260,
+            font: { family: "inherit", color: textColor },
+            legend: { x: 0, y: 1.15, orientation: "h" },
+          };
+          Plotly.newPlot(diagDiv, traces, layout, { responsive: true, displayModeBar: false });
+        }
+
+        // Report
+        const reportDetails = document.createElement("details");
+        reportDetails.style.marginTop = "12px";
+        reportDetails.innerHTML = `<summary>Full Report</summary><pre>${analysis.report_markdown}</pre>`;
+        container.appendChild(reportDetails);
+      }
+
+      // ================================================================
+      // Section Lookup in beam form
+      // ================================================================
+      document.getElementById("f-section-apply").addEventListener("click", async () => {
+        const name = document.getElementById("f-section-search").value.trim();
+        if (!name) return;
+        try {
+          const resp = await fetch(`/api/sections/${encodeURIComponent(name)}`);
+          const data = await resp.json();
+          if (data.status === "ok" && data.section) {
+            const s = data.section;
+            document.getElementById("f-I").value = s.Ix_m4;
+            document.getElementById("f-A").value = s.area_m2;
+            if (s.Sx_m3) document.getElementById("f-S").value = s.Sx_m3;
+            document.getElementById("f-section-info").textContent =
+              `${s.name}: A=${s.area_m2.toExponential(3)} m2, Ix=${s.Ix_m4.toExponential(3)} m4, Sx=${s.Sx_m3.toExponential(3)} m3, d=${s.depth_mm}mm`;
+          } else {
+            document.getElementById("f-section-info").textContent = "Section not found.";
+          }
+        } catch (e) {
+          document.getElementById("f-section-info").textContent = "Lookup failed.";
+        }
+      });
+
+      // ================================================================
+      // Section Library Tab
+      // ================================================================
+      document.getElementById("section-search-btn").addEventListener("click", async () => {
+        const type = document.getElementById("section-type-filter").value;
+        const query = document.getElementById("section-search-input").value.trim();
+        const resultsDiv = document.getElementById("section-results");
+
+        let url = `/api/sections?type=${type}`;
+        if (query) url += `&q=${encodeURIComponent(query)}`;
+
+        try {
+          const resp = await fetch(url);
+          const data = await resp.json();
+          resultsDiv.replaceChildren();
+
+          if (data.sections && Array.isArray(data.sections)) {
+            if (typeof data.sections[0] === "string") {
+              // List of names
+              const grid = document.createElement("div");
+              grid.className = "section-name-grid";
+              data.sections.forEach(name => {
+                const btn = document.createElement("button");
+                btn.className = "section-name-btn";
+                btn.textContent = name;
+                btn.addEventListener("click", () => loadSectionDetail(name, resultsDiv));
+                grid.appendChild(btn);
+              });
+              resultsDiv.appendChild(grid);
+            } else {
+              // Detailed results
+              data.sections.forEach(s => {
+                const card = createSectionCard(s);
+                resultsDiv.appendChild(card);
+              });
+            }
+          }
+        } catch (e) {
+          resultsDiv.innerHTML = '<p class="placeholder-text">Search failed.</p>';
+        }
+      });
+
+      async function loadSectionDetail(name, container) {
+        try {
+          const resp = await fetch(`/api/sections/${encodeURIComponent(name)}`);
+          const data = await resp.json();
+          if (data.status === "ok") {
+            container.replaceChildren();
+            container.appendChild(createSectionCard(data.section));
+          }
+        } catch (e) {}
+      }
+
+      function createSectionCard(s) {
+        const card = document.createElement("div");
+        card.className = "section-card";
+        card.innerHTML = `
+          <h3>${s.name}</h3>
+          <div class="section-props">
+            <div><span>Weight</span><strong>${s.weight_kg_per_m} kg/m</strong></div>
+            <div><span>Area</span><strong>${s.area_m2.toExponential(3)} m2</strong></div>
+            <div><span>Depth</span><strong>${s.depth_mm} mm</strong></div>
+            <div><span>Flange Width</span><strong>${s.flange_width_mm} mm</strong></div>
+            <div><span>Flange Thickness</span><strong>${s.flange_thickness_mm} mm</strong></div>
+            <div><span>Web Thickness</span><strong>${s.web_thickness_mm} mm</strong></div>
+            <div><span>Ix</span><strong>${s.Ix_m4.toExponential(3)} m4</strong></div>
+            <div><span>Iy</span><strong>${s.Iy_m4.toExponential(3)} m4</strong></div>
+            <div><span>Sx</span><strong>${s.Sx_m3.toExponential(3)} m3</strong></div>
+            <div><span>Sy</span><strong>${s.Sy_m3.toExponential(3)} m3</strong></div>
+            <div><span>Zx</span><strong>${s.Zx_m3.toExponential(3)} m3</strong></div>
+            <div><span>Zy</span><strong>${s.Zy_m3.toExponential(3)} m3</strong></div>
+            <div><span>rx</span><strong>${s.rx_m.toFixed(4)} m</strong></div>
+            <div><span>ry</span><strong>${s.ry_m.toFixed(4)} m</strong></div>
+          </div>
+        `;
+        return card;
+      }
+
+      // ================================================================
+      // History Tab
+      // ================================================================
+      document.getElementById("load-history-btn").addEventListener("click", async () => {
+        const listDiv = document.getElementById("history-list");
+        listDiv.innerHTML = '<p class="placeholder-text">Loading...</p>';
+        try {
+          const resp = await fetch("/api/history?limit=50");
+          const data = await resp.json();
+          listDiv.replaceChildren();
+
+          if (data.history && data.history.length > 0) {
+            data.history.forEach(item => {
+              const card = document.createElement("div");
+              card.className = "history-card";
+              const date = new Date(item.timestamp * 1000).toLocaleString();
+              const typeLabel = (item.analysis_type || "beam").toUpperCase();
+              card.innerHTML = `
+                <div class="history-card-header">
+                  <span class="history-type">${typeLabel}</span>
+                  <span class="history-date">${date}</span>
+                </div>
+                <p class="history-prompt">${item.prompt.substring(0, 120)}${item.prompt.length > 120 ? '...' : ''}</p>
+              `;
+              card.addEventListener("click", () => {
+                // Load into chat
+                document.getElementById("message").value = item.prompt;
+                document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+                document.querySelectorAll(".tab-content").forEach(t => { t.classList.add("hidden"); t.classList.remove("active"); });
+                document.querySelector('.nav-btn[data-tab="chat"]').classList.add("active");
+                const chatTab = document.getElementById("tab-chat");
+                chatTab.classList.add("active");
+                chatTab.classList.remove("hidden");
+              });
+              listDiv.appendChild(card);
+            });
+          } else {
+            listDiv.innerHTML = '<p class="placeholder-text">No analysis history yet.</p>';
+          }
+        } catch (e) {
+          listDiv.innerHTML = '<p class="placeholder-text">Failed to load history.</p>';
+        }
+      });
     </script>
   </body>
 </html>
