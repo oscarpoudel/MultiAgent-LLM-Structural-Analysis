@@ -13,7 +13,13 @@ from pydantic import ValidationError
 from app.agents import StructuralAgentSystem, detect_analysis_type
 from app.config import get_settings
 from app.llm import DisabledLLMClient, OllamaClient, PydanticAIClient
-from app.models import AnalyzeRequest, AnalyzeResponse, ChatRequest, ChatResponse
+from app.models import (
+    AnalyzeRequest, AnalyzeResponse, ChatRequest, ChatResponse,
+    TrussInputs, TrussNode, TrussMember, TrussLoad,
+    FrameInputs, FrameNode, FrameMember, FrameLoad, FrameMemberLoad,
+    BeamInputs, PointLoad, ColumnInputs, DiagramData, AgentTrace,
+)
+from app.tools.report import format_engineering_report
 from app.tools.sections import get_section, list_sections, search_sections, section_to_dict
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -202,6 +208,50 @@ def chat():
         analysis=analysis,
     )
     return jsonify(response.model_dump(mode="json"))
+
+
+# ---------------------------------------------------------------------------
+# Routes: Direct Structure Analysis (from canvas drawing)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/analyze/structure")
+def analyze_structure():
+    """Accepts a drawn structure (nodes, members, loads) and runs analysis."""
+    data = request.get_json(silent=True) or {}
+    analysis_type = data.get("analysis_type", "frame")
+
+    try:
+        if analysis_type == "truss":
+            from app.tools.truss import analyze_truss as run_truss
+            inputs = TrussInputs.model_validate(data.get("model", {}))
+            results = run_truss(inputs)
+            report_md = format_engineering_report(
+                "Canvas-drawn truss structure",
+                ["Preliminary elastic analysis.", "All joints pin-connected."],
+                [], results, analysis_type="truss",
+            )
+        else:
+            from app.tools.frame import analyze_frame as run_frame
+            inputs = FrameInputs.model_validate(data.get("model", {}))
+            results = run_frame(inputs)
+            report_md = format_engineering_report(
+                "Canvas-drawn frame structure",
+                ["Preliminary elastic analysis.", "Rigid beam-column connections."],
+                [], results, analysis_type="frame",
+            )
+
+        _save_history(analysis_type, f"Canvas {analysis_type}", results, report_md)
+
+        return jsonify({
+            "status": "ok",
+            "analysis_type": analysis_type,
+            "results": results,
+            "report_markdown": report_md,
+        })
+    except ValidationError as error:
+        return jsonify({"status": "error", "errors": error.errors()}), 422
+    except Exception as error:
+        return jsonify({"status": "error", "message": str(error)}), 500
 
 
 # ---------------------------------------------------------------------------

@@ -1,977 +1,1002 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Structural Analysis Agent</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
-  </head>
-  <body>
-    <header class="top-bar">
-      <div class="top-bar-inner">
-        <h1 class="logo">StructAgent</h1>
-        <nav class="top-nav">
-          <button class="nav-btn active" data-tab="chat">Chat</button>
-          <button class="nav-btn" data-tab="forms">Forms</button>
-          <button class="nav-btn" data-tab="sections">Sections</button>
-          <button class="nav-btn" data-tab="history">History</button>
-        </nav>
-        <button id="theme-toggle" class="icon-btn" title="Toggle dark mode">
-          <span id="theme-icon">&#9790;</span>
-        </button>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>StructAgent — Structural Analysis</title>
+  <link rel="stylesheet" href="/static/styles.css"/>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+</head>
+<body>
+
+<!-- ======== TOP BAR ======== -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="brand-icon">&#9651;</span> StructAgent</div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="draw">Draw</button>
+      <button class="tab" data-tab="chat">Chat</button>
+      <button class="tab" data-tab="sections">Sections</button>
+      <button class="tab" data-tab="history">History</button>
+    </nav>
+    <button id="themeBtn" class="icon-btn" title="Toggle theme"><span id="themeIco">&#9790;</span></button>
+  </div>
+</header>
+
+<!-- ============================================================ -->
+<!--  TAB: DRAW (Interactive Canvas)                               -->
+<!-- ============================================================ -->
+<main id="tab-draw" class="page active">
+
+  <!-- Toolbar -->
+  <aside class="toolbar glass">
+    <p class="toolbar-title">Tools</p>
+    <button class="tool-btn active" data-tool="select" title="Select / Move"><svg width="18" height="18"><path d="M4 2l10 7-5 1-2 5z" fill="currentColor"/></svg><span>Select</span></button>
+    <button class="tool-btn" data-tool="node" title="Add Node"><svg width="18" height="18"><circle cx="9" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Node</span></button>
+    <button class="tool-btn" data-tool="member" title="Add Member"><svg width="18" height="18"><line x1="3" y1="15" x2="15" y2="3" stroke="currentColor" stroke-width="2"/></svg><span>Member</span></button>
+    <button class="tool-btn" data-tool="support" title="Set Support"><svg width="18" height="18"><polygon points="9,6 3,15 15,15" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Support</span></button>
+    <button class="tool-btn" data-tool="load" title="Apply Load"><svg width="18" height="18"><line x1="9" y1="2" x2="9" y2="14" stroke="currentColor" stroke-width="2"/><polygon points="6,12 9,17 12,12" fill="currentColor"/></svg><span>Load</span></button>
+    <button class="tool-btn" data-tool="delete" title="Delete"><svg width="18" height="18"><line x1="4" y1="4" x2="14" y2="14" stroke="currentColor" stroke-width="2.5"/><line x1="14" y1="4" x2="4" y2="14" stroke="currentColor" stroke-width="2.5"/></svg><span>Delete</span></button>
+    <hr class="toolbar-sep"/>
+    <p class="toolbar-title">Analysis</p>
+    <select id="analysisType" class="tool-select">
+      <option value="frame">Frame</option>
+      <option value="truss">Truss</option>
+    </select>
+    <button id="runBtn" class="run-btn">&#9654; Analyze</button>
+    <button id="clearBtn" class="clear-btn">Clear All</button>
+    <hr class="toolbar-sep"/>
+    <p class="toolbar-title">Display</p>
+    <label class="chk"><input type="checkbox" id="showGrid" checked/> Grid</label>
+    <label class="chk"><input type="checkbox" id="showLabels" checked/> Labels</label>
+    <label class="chk"><input type="checkbox" id="showDeformed"/> Deformed</label>
+    <label class="chk"><input type="checkbox" id="showForces"/> Forces</label>
+    <hr class="toolbar-sep"/>
+    <p class="toolbar-title">Properties</p>
+    <div id="propPanel" class="prop-panel">
+      <p class="prop-hint">Select an element to edit its properties.</p>
+    </div>
+  </aside>
+
+  <!-- Canvas -->
+  <section class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+    <div class="canvas-status" id="canvasStatus">Ready &mdash; click to add nodes</div>
+  </section>
+
+  <!-- Results Panel -->
+  <aside class="results-panel glass" id="resultsPanel">
+    <div class="rp-header">
+      <h2>Results</h2>
+      <div class="rp-actions">
+        <button class="btn-xs" id="exportCsvBtn">CSV</button>
+        <button class="btn-xs" id="exportMdBtn">Report</button>
       </div>
-    </header>
+    </div>
+    <div id="rpContent" class="rp-content">
+      <p class="placeholder">Draw a structure and run analysis to see results.</p>
+    </div>
+  </aside>
+</main>
 
-    <main>
-      <!-- ============================================================ -->
-      <!-- TAB: Chat                                                     -->
-      <!-- ============================================================ -->
-      <section id="tab-chat" class="tab-content active">
-        <section class="chat-shell">
-          <div id="messages" class="messages" aria-live="polite">
-            <article class="message assistant-message">
-              <p>
-                Hi, I am your structural analysis assistant. I can help with beam analysis
-                (simply supported, cantilever, fixed-fixed), 2D truss and frame analysis,
-                column buckling checks, and AISC section lookups. Just describe your problem
-                in natural language.
-              </p>
-            </article>
-          </div>
+<!-- ============================================================ -->
+<!--  TAB: CHAT                                                    -->
+<!-- ============================================================ -->
+<main id="tab-chat" class="page hidden">
+  <div class="chat-layout">
+    <div class="chat-col">
+      <div id="messages" class="messages" aria-live="polite">
+        <article class="msg msg-bot"><p>Hi, I'm your structural analysis assistant. Describe a beam, truss, frame, or column problem and I'll analyze it for you.</p></article>
+      </div>
+      <form id="chatForm" class="composer glass">
+        <select id="exSel" class="ex-select">
+          <option value="">Load example...</option>
+          <option value="ss">Simply Supported Beam</option>
+          <option value="cant">Cantilever Beam</option>
+          <option value="pt">Beam + Point Load</option>
+          <option value="truss">2D Truss</option>
+          <option value="frame">Portal Frame</option>
+          <option value="col">Column Buckling</option>
+        </select>
+        <textarea id="chatInput" rows="3" placeholder="Describe your problem...">Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E is 200 GPa, I is 8e-6 m4. Check deflection against L/360.</textarea>
+        <button type="submit" class="send-btn">Analyze</button>
+      </form>
+    </div>
+    <div class="chat-results glass" id="chatResults">
+      <p class="placeholder">Results will appear here after analysis.</p>
+    </div>
+  </div>
+</main>
 
-          <section id="analysis-panel" class="analysis-panel hidden" aria-live="polite">
-            <div class="panel-header">
-              <p class="eyebrow" id="analysis-type-label">Analysis result</p>
-              <h2 id="analysis-title">Results</h2>
-              <div class="export-btns">
-                <button id="btn-export-csv" class="btn-sm">Export CSV</button>
-                <button id="btn-export-report" class="btn-sm">Export Report</button>
-              </div>
-            </div>
-            <div id="metrics" class="metrics"></div>
-            <div id="warnings" class="warnings"></div>
+<!-- ============================================================ -->
+<!--  TAB: SECTIONS                                                -->
+<!-- ============================================================ -->
+<main id="tab-sections" class="page hidden">
+  <div class="sec-layout">
+    <div class="sec-head glass">
+      <h2>Steel Section Library</h2>
+      <div class="sec-row">
+        <select id="secType"><option value="all">All</option><option value="w">W-Shapes</option><option value="hss">HSS</option><option value="l">Angles</option></select>
+        <input id="secQ" placeholder="e.g. W310" />
+        <button id="secSearch" class="btn-xs">Search</button>
+      </div>
+    </div>
+    <div id="secResults" class="sec-results glass"><p class="placeholder">Search for a section.</p></div>
+  </div>
+</main>
 
-            <!-- Diagrams -->
-            <div id="diagrams-section" class="hidden">
-              <h3>Diagrams</h3>
-              <div class="diagram-tabs">
-                <button class="diagram-tab active" data-diagram="sfd">SFD</button>
-                <button class="diagram-tab" data-diagram="bmd">BMD</button>
-                <button class="diagram-tab" data-diagram="deflection">Deflection</button>
-              </div>
-              <div id="diagram-plot" class="diagram-plot"></div>
-            </div>
+<!-- ============================================================ -->
+<!--  TAB: HISTORY                                                 -->
+<!-- ============================================================ -->
+<main id="tab-history" class="page hidden">
+  <div class="hist-layout">
+    <div class="hist-head"><h2>Analysis History</h2><button id="histRefresh" class="btn-xs">Refresh</button></div>
+    <div id="histList" class="hist-list glass"><p class="placeholder">Click Refresh to load.</p></div>
+  </div>
+</main>
 
-            <!-- Truss/Frame detailed results -->
-            <div id="detailed-results" class="hidden">
-              <details>
-                <summary>Detailed Results</summary>
-                <pre id="detailed-json"></pre>
-              </details>
-            </div>
+<!-- ============================================================ -->
+<!--  MODAL: Support / Load Picker                                 -->
+<!-- ============================================================ -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal glass" id="modal">
+    <h3 id="modalTitle">Set Support</h3>
+    <div id="modalBody"></div>
+    <div class="modal-foot">
+      <button class="btn-xs" id="modalCancel">Cancel</button>
+      <button class="btn-xs accent" id="modalOk">Apply</button>
+    </div>
+  </div>
+</div>
 
-            <details>
-              <summary>Agent Trace</summary>
-              <ol id="trace-list"></ol>
-            </details>
-            <details>
-              <summary>Report Markdown</summary>
-              <pre id="report"></pre>
-            </details>
-          </section>
+<script>
+// ================================================================
+//  GLOBAL STATE
+// ================================================================
+const S = {
+  nodes: [],        // {id, x, y, support:'free'|'pin'|'roller'|'fixed'}
+  members: [],      // {id, n1, n2, A, I, E}
+  loads: [],        // {nodeId, fx, fy, moment}
+  memberLoads: [],  // {memberId, udl}
+  nextNodeId: 1,
+  nextMemberId: 1,
+  tool: 'select',
+  selected: null,   // {type:'node'|'member', id}
+  memberStart: null,
+  results: null,
+  pan: {x:0, y:0},
+  zoom: 40,         // px per meter
+  dragging: false,
+  dragStart: null,
+  dragNode: null,
+  gridSnap: 0.5,    // meters
+};
 
-          <form id="chat-form" class="composer">
-            <label for="message">Message</label>
-            <textarea id="message" name="message" rows="3" placeholder="Describe your structural analysis problem...">Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E is 200 GPa, I is 8e-6 m4. Check deflection against L/360.</textarea>
-            <div class="composer-actions">
-              <select id="example-select" class="example-select">
-                <option value="">Load example...</option>
-                <option value="beam_ss">Simply Supported Beam (UDL)</option>
-                <option value="beam_cantilever">Cantilever Beam</option>
-                <option value="beam_point">Beam with Point Load</option>
-                <option value="beam_combined">Combined Loading</option>
-                <option value="beam_fixed">Fixed-Fixed Beam</option>
-                <option value="truss">2D Truss</option>
-                <option value="frame">Portal Frame</option>
-                <option value="column">Column Buckling</option>
-              </select>
-              <button type="submit">Analyze</button>
-            </div>
-          </form>
-        </section>
-      </section>
+const GRID = 0.5;
+const NODE_R = 7;
+const SNAP_R = 15;
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
-      <!-- ============================================================ -->
-      <!-- TAB: Structured Forms                                         -->
-      <!-- ============================================================ -->
-      <section id="tab-forms" class="tab-content hidden">
-        <div class="forms-layout">
-          <div class="form-panel">
-            <h2>Quick Analysis</h2>
-            <div class="form-tabs">
-              <button class="form-tab active" data-form="beam">Beam</button>
-              <button class="form-tab" data-form="column">Column</button>
-              <button class="form-tab" data-form="truss-form">Truss</button>
-              <button class="form-tab" data-form="frame-form">Frame</button>
-            </div>
+// ================================================================
+//  TABS
+// ================================================================
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>{p.classList.add('hidden');p.classList.remove('active');});
+    t.classList.add('active');
+    const pg = document.getElementById('tab-'+t.dataset.tab);
+    if(pg){pg.classList.remove('hidden');pg.classList.add('active');}
+    if(t.dataset.tab==='draw') resizeCanvas();
+  });
+});
 
-            <!-- Beam Form -->
-            <form id="beam-form" class="struct-form active">
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>Support Type</label>
-                  <select id="f-support">
-                    <option value="simply_supported">Simply Supported</option>
-                    <option value="cantilever">Cantilever</option>
-                    <option value="fixed_fixed">Fixed-Fixed</option>
-                    <option value="propped_cantilever">Propped Cantilever</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Span (m)</label>
-                  <input type="number" id="f-span" value="6" step="0.1" min="0.1" />
-                </div>
-                <div class="form-group">
-                  <label>UDL (kN/m)</label>
-                  <input type="number" id="f-udl" value="20" step="0.1" min="0" />
-                </div>
-                <div class="form-group">
-                  <label>E (GPa)</label>
-                  <input type="number" id="f-E" value="200" step="1" min="1" />
-                </div>
-                <div class="form-group">
-                  <label>I (m4)</label>
-                  <input type="text" id="f-I" value="8e-6" />
-                </div>
-                <div class="form-group">
-                  <label>Area (m2)</label>
-                  <input type="text" id="f-A" value="1.0" />
-                </div>
-                <div class="form-group">
-                  <label>Section Modulus (m3)</label>
-                  <input type="text" id="f-S" value="" placeholder="Optional" />
-                </div>
-                <div class="form-group">
-                  <label>Deflection Limit (L/...)</label>
-                  <input type="number" id="f-defl-ratio" value="360" step="1" min="1" />
-                </div>
-              </div>
-              <div class="form-group" style="margin-top:12px">
-                <label>Point Loads <small>(one per line: magnitude_kN position_m)</small></label>
-                <textarea id="f-point-loads" rows="2" placeholder="e.g. 50 3"></textarea>
-              </div>
-              <div class="form-group" style="margin-top:8px">
-                <label>Section Lookup</label>
-                <div class="section-lookup-row">
-                  <input type="text" id="f-section-search" placeholder="e.g. W310X67" />
-                  <button type="button" id="f-section-apply" class="btn-sm">Apply</button>
-                </div>
-                <small id="f-section-info" class="section-info"></small>
-              </div>
-              <button type="submit" class="btn-primary" style="margin-top:14px">Run Beam Analysis</button>
-            </form>
+// ================================================================
+//  THEME
+// ================================================================
+const themeBtn=document.getElementById('themeBtn'), themeIco=document.getElementById('themeIco');
+function setTheme(d){document.documentElement.setAttribute('data-theme',d?'dark':'light');themeIco.textContent=d?'\u2600':'\u263E';localStorage.setItem('theme',d?'dark':'light');}
+themeBtn.addEventListener('click',()=>setTheme(document.documentElement.getAttribute('data-theme')!=='dark'));
+if(localStorage.getItem('theme')==='dark') setTheme(true);
 
-            <!-- Column Form -->
-            <form id="column-form" class="struct-form hidden">
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>End Condition</label>
-                  <select id="fc-end">
-                    <option value="pinned_pinned">Pinned-Pinned (K=1.0)</option>
-                    <option value="fixed_free">Fixed-Free (K=2.0)</option>
-                    <option value="fixed_pinned">Fixed-Pinned (K=0.7)</option>
-                    <option value="fixed_fixed">Fixed-Fixed (K=0.5)</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Length (m)</label>
-                  <input type="number" id="fc-length" value="4" step="0.1" min="0.1" />
-                </div>
-                <div class="form-group">
-                  <label>Area (m2)</label>
-                  <input type="text" id="fc-area" value="0.01" />
-                </div>
-                <div class="form-group">
-                  <label>I (m4)</label>
-                  <input type="text" id="fc-I" value="1e-4" />
-                </div>
-                <div class="form-group">
-                  <label>E (GPa)</label>
-                  <input type="number" id="fc-E" value="200" step="1" />
-                </div>
-                <div class="form-group">
-                  <label>Fy (MPa)</label>
-                  <input type="number" id="fc-Fy" value="250" step="1" />
-                </div>
-                <div class="form-group">
-                  <label>Axial Load (kN)</label>
-                  <input type="number" id="fc-load" value="500" step="1" />
-                </div>
-              </div>
-              <button type="submit" class="btn-primary" style="margin-top:14px">Run Column Analysis</button>
-            </form>
+// ================================================================
+//  CANVAS SETUP
+// ================================================================
+function resizeCanvas(){
+  const wrap = canvas.parentElement;
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  draw();
+}
+window.addEventListener('resize', resizeCanvas);
+setTimeout(resizeCanvas, 50);
 
-            <!-- Truss Form -->
-            <form id="truss-form-el" class="struct-form hidden">
-              <p class="form-hint">Define a simple truss by specifying span, height, and load. Or use the chat for custom node/member definitions.</p>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>Span (m)</label>
-                  <input type="number" id="ft-span" value="6" step="0.1" />
-                </div>
-                <div class="form-group">
-                  <label>Height (m)</label>
-                  <input type="number" id="ft-height" value="2" step="0.1" />
-                </div>
-                <div class="form-group">
-                  <label>Load at top node (kN)</label>
-                  <input type="number" id="ft-load" value="50" step="1" />
-                </div>
-              </div>
-              <button type="submit" class="btn-primary" style="margin-top:14px">Run Truss Analysis</button>
-            </form>
+// ================================================================
+//  COORDINATE TRANSFORMS
+// ================================================================
+function worldToScreen(wx, wy){
+  const cx = canvas.width/2, cy = canvas.height/2;
+  return { x: cx + (wx * S.zoom) + S.pan.x, y: cy - (wy * S.zoom) + S.pan.y };
+}
+function screenToWorld(sx, sy){
+  const cx = canvas.width/2, cy = canvas.height/2;
+  return { x: (sx - cx - S.pan.x) / S.zoom, y: -(sy - cy - S.pan.y) / S.zoom };
+}
+function snap(v){ return Math.round(v / GRID) * GRID; }
+function snapWorld(wx,wy){ return {x:snap(wx), y:snap(wy)}; }
 
-            <!-- Frame Form -->
-            <form id="frame-form-el" class="struct-form hidden">
-              <p class="form-hint">Define a portal frame with span, height, and loads.</p>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>Bay Width (m)</label>
-                  <input type="number" id="ff-width" value="6" step="0.1" />
-                </div>
-                <div class="form-group">
-                  <label>Column Height (m)</label>
-                  <input type="number" id="ff-height" value="4" step="0.1" />
-                </div>
-                <div class="form-group">
-                  <label>Gravity UDL on beam (kN/m)</label>
-                  <input type="number" id="ff-gravity" value="20" step="0.1" />
-                </div>
-                <div class="form-group">
-                  <label>Lateral Load (kN)</label>
-                  <input type="number" id="ff-lateral" value="10" step="0.1" />
-                </div>
-              </div>
-              <button type="submit" class="btn-primary" style="margin-top:14px">Run Frame Analysis</button>
-            </form>
-          </div>
+// ================================================================
+//  DRAWING
+// ================================================================
+function draw(){
+  const W = canvas.width, H = canvas.height;
+  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  ctx.clearRect(0,0,W,H);
 
-          <div class="form-results-panel">
-            <div id="form-results" class="form-results">
-              <p class="placeholder-text">Run an analysis to see results here.</p>
-            </div>
-          </div>
-        </div>
-      </section>
+  // Background
+  ctx.fillStyle = isDark ? '#0f1419' : '#f8fafb';
+  ctx.fillRect(0,0,W,H);
 
-      <!-- ============================================================ -->
-      <!-- TAB: Sections                                                 -->
-      <!-- ============================================================ -->
-      <section id="tab-sections" class="tab-content hidden">
-        <div class="sections-layout">
-          <div class="sections-controls">
-            <h2>Steel Section Library</h2>
-            <div class="section-search-row">
-              <select id="section-type-filter">
-                <option value="all">All Types</option>
-                <option value="w">W-Shapes</option>
-                <option value="hss">HSS</option>
-                <option value="l">Angles</option>
-              </select>
-              <input type="text" id="section-search-input" placeholder="Search sections (e.g. W310)..." />
-              <button id="section-search-btn" class="btn-sm">Search</button>
-            </div>
-          </div>
-          <div id="section-results" class="section-results">
-            <p class="placeholder-text">Search for a section to see its properties.</p>
-          </div>
-        </div>
-      </section>
+  // Grid
+  if(document.getElementById('showGrid').checked) drawGrid(isDark);
 
-      <!-- ============================================================ -->
-      <!-- TAB: History                                                  -->
-      <!-- ============================================================ -->
-      <section id="tab-history" class="tab-content hidden">
-        <div class="history-layout">
-          <h2>Analysis History</h2>
-          <button id="load-history-btn" class="btn-sm">Refresh</button>
-          <div id="history-list" class="history-list">
-            <p class="placeholder-text">Click Refresh to load analysis history.</p>
-          </div>
-        </div>
-      </section>
-    </main>
+  // Deformed shape
+  if(document.getElementById('showDeformed').checked && S.results) drawDeformed(isDark);
 
-    <script>
-      // ================================================================
-      // State
-      // ================================================================
-      let lastAnalysis = null;
-      let currentDiagramType = "sfd";
+  // Members
+  S.members.forEach(m => {
+    const n1 = S.nodes.find(n=>n.id===m.n1);
+    const n2 = S.nodes.find(n=>n.id===m.n2);
+    if(!n1||!n2) return;
+    const p1 = worldToScreen(n1.x, n1.y);
+    const p2 = worldToScreen(n2.x, n2.y);
 
-      // ================================================================
-      // Tab Navigation
-      // ================================================================
-      document.querySelectorAll(".nav-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          document.querySelectorAll(".nav-btn").forEach((b) => b.classList.remove("active"));
-          document.querySelectorAll(".tab-content").forEach((t) => t.classList.remove("active"));
-          btn.classList.add("active");
-          const tab = document.getElementById("tab-" + btn.dataset.tab);
-          if (tab) {
-            tab.classList.add("active");
-            tab.classList.remove("hidden");
-          }
-          document.querySelectorAll(".tab-content:not(.active)").forEach((t) => t.classList.add("hidden"));
-        });
-      });
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    const isSel = S.selected && S.selected.type==='member' && S.selected.id===m.id;
+    ctx.strokeStyle = isSel ? '#f59e0b' : (isDark ? '#60a5fa' : '#2563eb');
+    ctx.lineWidth = isSel ? 4 : 2.5;
+    ctx.stroke();
 
-      // ================================================================
-      // Dark Mode
-      // ================================================================
-      const themeToggle = document.getElementById("theme-toggle");
-      const themeIcon = document.getElementById("theme-icon");
-      function setTheme(dark) {
-        document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
-        themeIcon.textContent = dark ? "\u2600" : "\u263E";
-        localStorage.setItem("theme", dark ? "dark" : "light");
+    // Force label
+    if(document.getElementById('showForces').checked && S.results){
+      const mf = S.results.member_forces && S.results.member_forces[String(m.id)];
+      if(mf){
+        const mx = (p1.x+p2.x)/2, my = (p1.y+p2.y)/2;
+        const axial = mf.axial_kn || mf.axial_start_kn || 0;
+        ctx.font = '600 11px Inter,sans-serif';
+        ctx.fillStyle = axial > 0.01 ? '#22c55e' : (axial < -0.01 ? '#ef4444' : '#888');
+        ctx.textAlign = 'center';
+        ctx.fillText((axial > 0 ? 'T ' : axial < 0 ? 'C ' : '') + Math.abs(axial).toFixed(1) + ' kN', mx, my - 8);
       }
-      themeToggle.addEventListener("click", () => {
-        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-        setTheme(!isDark);
+    }
+
+    // Label
+    if(document.getElementById('showLabels').checked){
+      const mx = (p1.x+p2.x)/2, my = (p1.y+p2.y)/2;
+      ctx.font = '500 10px Inter,sans-serif';
+      ctx.fillStyle = isDark ? '#64748b' : '#94a3b8';
+      ctx.textAlign = 'center';
+      ctx.fillText('M'+m.id, mx, my + 14);
+    }
+  });
+
+  // Member UDL arrows
+  S.memberLoads.forEach(ml=>{
+    const m = S.members.find(mm=>mm.id===ml.memberId);
+    if(!m) return;
+    const n1 = S.nodes.find(n=>n.id===m.n1);
+    const n2 = S.nodes.find(n=>n.id===m.n2);
+    if(!n1||!n2) return;
+    const p1 = worldToScreen(n1.x,n1.y);
+    const p2 = worldToScreen(n2.x,n2.y);
+    const nArrows = 5;
+    for(let i=0;i<=nArrows;i++){
+      const t=i/nArrows;
+      const ax=p1.x+(p2.x-p1.x)*t, ay=p1.y+(p2.y-p1.y)*t;
+      drawArrow(ax,ay-25,ax,ay-5,'#a855f7',1.5);
+    }
+    ctx.font='600 10px Inter,sans-serif';ctx.fillStyle='#a855f7';ctx.textAlign='center';
+    ctx.fillText(Math.abs(ml.udl).toFixed(1)+' kN/m',(p1.x+p2.x)/2,(p1.y+p2.y)/2-30);
+  });
+
+  // Nodes
+  S.nodes.forEach(n => {
+    const p = worldToScreen(n.x, n.y);
+    const isSel = S.selected && S.selected.type==='node' && S.selected.id===n.id;
+
+    // Support symbol
+    drawSupport(p.x, p.y, n.support, isDark);
+
+    // Node circle
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, NODE_R, 0, Math.PI*2);
+    ctx.fillStyle = isSel ? '#f59e0b' : (isDark ? '#e2e8f0' : '#1e293b');
+    ctx.fill();
+    ctx.strokeStyle = isDark ? '#334155' : '#cbd5e1';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Label
+    if(document.getElementById('showLabels').checked){
+      ctx.font = '600 11px Inter,sans-serif';
+      ctx.fillStyle = isDark ? '#94a3b8' : '#475569';
+      ctx.textAlign = 'center';
+      ctx.fillText(n.id, p.x, p.y - 14);
+      ctx.font = '400 9px Inter,sans-serif';
+      ctx.fillStyle = isDark ? '#64748b' : '#94a3b8';
+      ctx.fillText(`(${n.x.toFixed(1)}, ${n.y.toFixed(1)})`, p.x, p.y - 24);
+    }
+  });
+
+  // Loads
+  S.loads.forEach(l => {
+    const n = S.nodes.find(nn=>nn.id===l.nodeId);
+    if(!n) return;
+    const p = worldToScreen(n.x, n.y);
+    const scale = 30;
+    if(Math.abs(l.fy) > 0.01){
+      const dir = l.fy < 0 ? 1 : -1;
+      drawArrow(p.x, p.y - dir*scale, p.x, p.y, '#ef4444', 2.5);
+      ctx.font='700 11px Inter,sans-serif';ctx.fillStyle='#ef4444';ctx.textAlign='center';
+      ctx.fillText(Math.abs(l.fy).toFixed(1)+' kN', p.x, p.y - dir*scale - 6*dir);
+    }
+    if(Math.abs(l.fx) > 0.01){
+      const dir = l.fx > 0 ? 1 : -1;
+      drawArrow(p.x + dir*scale, p.y, p.x, p.y, '#3b82f6', 2.5);
+      ctx.font='700 11px Inter,sans-serif';ctx.fillStyle='#3b82f6';ctx.textAlign='center';
+      ctx.fillText(Math.abs(l.fx).toFixed(1)+' kN', p.x + dir*(scale+18), p.y - 4);
+    }
+  });
+
+  // Member-start hint
+  if(S.tool==='member' && S.memberStart!==null){
+    const n = S.nodes.find(nn=>nn.id===S.memberStart);
+    if(n){
+      const p=worldToScreen(n.x,n.y);
+      ctx.beginPath();ctx.arc(p.x,p.y,NODE_R+4,0,Math.PI*2);
+      ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+    }
+  }
+
+  // Reactions overlay
+  if(document.getElementById('showForces').checked && S.results && S.results.reactions){
+    Object.entries(S.results.reactions).forEach(([nid, r])=>{
+      const n = S.nodes.find(nn=>nn.id===parseInt(nid));
+      if(!n) return;
+      const p = worldToScreen(n.x, n.y);
+      const lines = [];
+      if(Math.abs(r.rx_kn||0)>0.01) lines.push(`Rx=${(r.rx_kn).toFixed(1)} kN`);
+      if(Math.abs(r.ry_kn||0)>0.01) lines.push(`Ry=${(r.ry_kn).toFixed(1)} kN`);
+      if(Math.abs(r.mz_kn_m||0)>0.01) lines.push(`M=${(r.mz_kn_m).toFixed(1)} kN-m`);
+      ctx.font='600 10px Inter,sans-serif';ctx.fillStyle='#22c55e';ctx.textAlign='center';
+      lines.forEach((l,i)=>ctx.fillText(l, p.x, p.y+22+i*13));
+    });
+  }
+}
+
+function drawGrid(isDark){
+  const minW = screenToWorld(0, canvas.height);
+  const maxW = screenToWorld(canvas.width, 0);
+  ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)';
+  ctx.lineWidth = 1;
+  for(let x = Math.floor(minW.x/GRID)*GRID; x <= maxW.x; x+=GRID){
+    const p = worldToScreen(x,0);
+    ctx.beginPath();ctx.moveTo(p.x,0);ctx.lineTo(p.x,canvas.height);ctx.stroke();
+  }
+  for(let y = Math.floor(minW.y/GRID)*GRID; y <= maxW.y; y+=GRID){
+    const p = worldToScreen(0,y);
+    ctx.beginPath();ctx.moveTo(0,p.y);ctx.lineTo(canvas.width,p.y);ctx.stroke();
+  }
+  // Axes
+  const o = worldToScreen(0,0);
+  ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();ctx.moveTo(0,o.y);ctx.lineTo(canvas.width,o.y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(o.x,0);ctx.lineTo(o.x,canvas.height);ctx.stroke();
+}
+
+function drawSupport(px,py,type,isDark){
+  const sz = 14;
+  ctx.save();
+  ctx.strokeStyle = isDark ? '#34d399' : '#059669';
+  ctx.fillStyle = isDark ? 'rgba(52,211,153,0.15)' : 'rgba(5,150,105,0.1)';
+  ctx.lineWidth = 2;
+  if(type==='pin'){
+    ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px-sz,py+sz);ctx.lineTo(px+sz,py+sz);ctx.closePath();ctx.stroke();ctx.fill();
+    // ground
+    for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(px+i*sz-3,py+sz);ctx.lineTo(px+i*sz-8,py+sz+6);ctx.stroke();}
+  } else if(type==='roller'||type==='roller_x'){
+    ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px-sz,py+sz);ctx.lineTo(px+sz,py+sz);ctx.closePath();ctx.stroke();ctx.fill();
+    ctx.beginPath();ctx.arc(px-sz/2,py+sz+5,4,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(px+sz/2,py+sz+5,4,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(px-sz-2,py+sz+10);ctx.lineTo(px+sz+2,py+sz+10);ctx.stroke();
+  } else if(type==='fixed'){
+    ctx.fillStyle = isDark ? 'rgba(52,211,153,0.2)' : 'rgba(5,150,105,0.15)';
+    ctx.fillRect(px-sz-2,py-sz,6,sz*2);
+    ctx.beginPath();ctx.moveTo(px-sz+4,py-sz);ctx.lineTo(px-sz+4,py+sz);ctx.stroke();
+    for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(px-sz+4,py+i*6);ctx.lineTo(px-sz-4,py+i*6+6);ctx.stroke();}
+  }
+  ctx.restore();
+}
+
+function drawArrow(x1,y1,x2,y2,color,lw){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<2)return;
+  const ux=dx/len,uy=dy/len;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.stroke();
+  const hl=8,hw=4;
+  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-ux*hl+uy*hw,y2-uy*hl-ux*hw);ctx.lineTo(x2-ux*hl-uy*hw,y2-uy*hl+ux*hw);ctx.closePath();ctx.fillStyle=color;ctx.fill();
+}
+
+function drawDeformed(isDark){
+  if(!S.results || !S.results.node_displacements) return;
+  const scale = 200; // amplification
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  S.members.forEach(m=>{
+    const n1=S.nodes.find(n=>n.id===m.n1), n2=S.nodes.find(n=>n.id===m.n2);
+    if(!n1||!n2)return;
+    const d1=S.results.node_displacements[String(n1.id)], d2=S.results.node_displacements[String(n2.id)];
+    if(!d1||!d2)return;
+    const p1=worldToScreen(n1.x+(d1.dx_mm||0)/1000*scale, n1.y+(d1.dy_mm||0)/1000*scale);
+    const p2=worldToScreen(n2.x+(d2.dx_mm||0)/1000*scale, n2.y+(d2.dy_mm||0)/1000*scale);
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);
+    ctx.strokeStyle='#f97316';ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.stroke();ctx.setLineDash([]);
+  });
+  ctx.restore();
+}
+
+// ================================================================
+//  TOOL BUTTONS
+// ================================================================
+document.querySelectorAll('.tool-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.tool-btn').forEach(bb=>bb.classList.remove('active'));
+    b.classList.add('active');
+    S.tool = b.dataset.tool;
+    S.memberStart = null;
+    canvas.style.cursor = S.tool==='select' ? 'default' : 'crosshair';
+    updateStatus();
+  });
+});
+
+function updateStatus(){
+  const el = document.getElementById('canvasStatus');
+  const msgs = {
+    select: 'Click a node or member to select. Drag to move nodes. Right-click + drag to pan.',
+    node: 'Click on canvas to place a node. Snaps to 0.5m grid.',
+    member: S.memberStart ? `Click a second node to finish member (from node ${S.memberStart}).` : 'Click first node to start a member.',
+    support: 'Click a node to set its support type.',
+    load: 'Click a node to apply a load.',
+    delete: 'Click a node or member to delete it.',
+  };
+  el.textContent = msgs[S.tool] || 'Ready';
+}
+updateStatus();
+
+// ================================================================
+//  FIND NEAREST
+// ================================================================
+function findNodeAt(sx,sy){
+  let best=null, bestD=SNAP_R;
+  S.nodes.forEach(n=>{
+    const p=worldToScreen(n.x,n.y);
+    const d=Math.sqrt((p.x-sx)**2+(p.y-sy)**2);
+    if(d<bestD){bestD=d;best=n;}
+  });
+  return best;
+}
+function findMemberAt(sx,sy){
+  let best=null, bestD=10;
+  S.members.forEach(m=>{
+    const n1=S.nodes.find(n=>n.id===m.n1), n2=S.nodes.find(n=>n.id===m.n2);
+    if(!n1||!n2)return;
+    const p1=worldToScreen(n1.x,n1.y), p2=worldToScreen(n2.x,n2.y);
+    const d=distPointToSeg(sx,sy,p1.x,p1.y,p2.x,p2.y);
+    if(d<bestD){bestD=d;best=m;}
+  });
+  return best;
+}
+function distPointToSeg(px,py,ax,ay,bx,by){
+  const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;
+  if(l2===0)return Math.sqrt((px-ax)**2+(py-ay)**2);
+  let t=((px-ax)*dx+(py-ay)*dy)/l2;
+  t=Math.max(0,Math.min(1,t));
+  return Math.sqrt((px-ax-t*dx)**2+(py-ay-t*dy)**2);
+}
+
+// ================================================================
+//  CANVAS EVENTS
+// ================================================================
+canvas.addEventListener('mousedown', e=>{
+  const rect=canvas.getBoundingClientRect();
+  const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
+
+  // Right-click pan
+  if(e.button===2){
+    S.dragging=true;S.dragStart={x:e.clientX,y:e.clientY,px:S.pan.x,py:S.pan.y};
+    canvas.style.cursor='grabbing';return;
+  }
+
+  const w = screenToWorld(sx,sy);
+  const sw = snapWorld(w.x,w.y);
+
+  if(S.tool==='select'){
+    const n=findNodeAt(sx,sy);
+    if(n){S.selected={type:'node',id:n.id};S.dragNode=n.id;showProp();draw();return;}
+    const m=findMemberAt(sx,sy);
+    if(m){S.selected={type:'member',id:m.id};showProp();draw();return;}
+    S.selected=null;showProp();draw();
+  } else if(S.tool==='node'){
+    // Check not duplicate
+    const dup=S.nodes.find(n=>Math.abs(n.x-sw.x)<0.01&&Math.abs(n.y-sw.y)<0.01);
+    if(!dup){
+      S.nodes.push({id:S.nextNodeId++, x:sw.x, y:sw.y, support:'free'});
+      draw();
+    }
+  } else if(S.tool==='member'){
+    const n=findNodeAt(sx,sy);
+    if(!n)return;
+    if(S.memberStart===null){S.memberStart=n.id;updateStatus();draw();return;}
+    if(n.id===S.memberStart){S.memberStart=null;updateStatus();return;}
+    // Check not duplicate
+    const dup=S.members.find(m=>(m.n1===S.memberStart&&m.n2===n.id)||(m.n1===n.id&&m.n2===S.memberStart));
+    if(!dup){
+      S.members.push({id:S.nextMemberId++, n1:S.memberStart, n2:n.id, A:0.01, I:1e-4, E:200});
+    }
+    S.memberStart=null;updateStatus();draw();
+  } else if(S.tool==='support'){
+    const n=findNodeAt(sx,sy);
+    if(n) showSupportModal(n);
+  } else if(S.tool==='load'){
+    const n=findNodeAt(sx,sy);
+    if(n) showLoadModal(n);
+    else {
+      const m=findMemberAt(sx,sy);
+      if(m) showMemberLoadModal(m);
+    }
+  } else if(S.tool==='delete'){
+    const n=findNodeAt(sx,sy);
+    if(n){
+      S.members=S.members.filter(m=>m.n1!==n.id&&m.n2!==n.id);
+      S.loads=S.loads.filter(l=>l.nodeId!==n.id);
+      S.nodes=S.nodes.filter(nn=>nn.id!==n.id);
+      S.selected=null;showProp();draw();return;
+    }
+    const m=findMemberAt(sx,sy);
+    if(m){
+      S.members=S.members.filter(mm=>mm.id!==m.id);
+      S.memberLoads=S.memberLoads.filter(ml=>ml.memberId!==m.id);
+      S.selected=null;showProp();draw();
+    }
+  }
+});
+
+canvas.addEventListener('mousemove', e=>{
+  if(S.dragging&&S.dragStart){
+    S.pan.x=S.dragStart.px+(e.clientX-S.dragStart.x);
+    S.pan.y=S.dragStart.py+(e.clientY-S.dragStart.y);
+    draw();return;
+  }
+  if(S.dragNode!==null&&S.tool==='select'){
+    const rect=canvas.getBoundingClientRect();
+    const w=screenToWorld(e.clientX-rect.left,e.clientY-rect.top);
+    const sw=snapWorld(w.x,w.y);
+    const n=S.nodes.find(nn=>nn.id===S.dragNode);
+    if(n){n.x=sw.x;n.y=sw.y;draw();}
+  }
+});
+
+canvas.addEventListener('mouseup',()=>{
+  S.dragging=false;S.dragStart=null;S.dragNode=null;
+  if(S.tool==='select') canvas.style.cursor='default';
+});
+
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  S.zoom = Math.max(10, Math.min(200, S.zoom * factor));
+  draw();
+},{passive:false});
+
+// ================================================================
+//  PROPERTY PANEL
+// ================================================================
+function showProp(){
+  const panel = document.getElementById('propPanel');
+  if(!S.selected){
+    panel.innerHTML='<p class="prop-hint">Select an element to edit.</p>';return;
+  }
+  if(S.selected.type==='node'){
+    const n=S.nodes.find(nn=>nn.id===S.selected.id);
+    if(!n){panel.innerHTML='';return;}
+    panel.innerHTML=`
+      <div class="pf"><label>Node ${n.id}</label></div>
+      <div class="pf"><label>X (m)</label><input type="number" value="${n.x}" step="0.5" id="px"/></div>
+      <div class="pf"><label>Y (m)</label><input type="number" value="${n.y}" step="0.5" id="py"/></div>
+      <div class="pf"><label>Support</label><select id="pSupp">
+        <option value="free" ${n.support==='free'?'selected':''}>Free</option>
+        <option value="pin" ${n.support==='pin'?'selected':''}>Pin</option>
+        <option value="roller" ${n.support==='roller'||n.support==='roller_x'?'selected':''}>Roller</option>
+        <option value="fixed" ${n.support==='fixed'?'selected':''}>Fixed</option>
+      </select></div>`;
+    panel.querySelector('#px').addEventListener('change',e=>{n.x=parseFloat(e.target.value);draw();});
+    panel.querySelector('#py').addEventListener('change',e=>{n.y=parseFloat(e.target.value);draw();});
+    panel.querySelector('#pSupp').addEventListener('change',e=>{n.support=e.target.value;draw();});
+  } else if(S.selected.type==='member'){
+    const m=S.members.find(mm=>mm.id===S.selected.id);
+    if(!m){panel.innerHTML='';return;}
+    panel.innerHTML=`
+      <div class="pf"><label>Member ${m.id} (${m.n1}-${m.n2})</label></div>
+      <div class="pf"><label>A (m2)</label><input type="text" value="${m.A}" id="mA"/></div>
+      <div class="pf"><label>I (m4)</label><input type="text" value="${m.I}" id="mI"/></div>
+      <div class="pf"><label>E (GPa)</label><input type="number" value="${m.E}" step="1" id="mE"/></div>`;
+    panel.querySelector('#mA').addEventListener('change',e=>{m.A=parseFloat(e.target.value);});
+    panel.querySelector('#mI').addEventListener('change',e=>{m.I=parseFloat(e.target.value);});
+    panel.querySelector('#mE').addEventListener('change',e=>{m.E=parseFloat(e.target.value);});
+  }
+}
+
+// ================================================================
+//  MODALS
+// ================================================================
+const overlay=document.getElementById('modalOverlay'), modal=document.getElementById('modal');
+const modalTitle=document.getElementById('modalTitle'), modalBody=document.getElementById('modalBody');
+const modalOk=document.getElementById('modalOk'), modalCancel=document.getElementById('modalCancel');
+
+function openModal(title,bodyHtml,onOk){
+  modalTitle.textContent=title; modalBody.innerHTML=bodyHtml;
+  overlay.classList.remove('hidden');
+  modalOk.onclick=()=>{onOk();overlay.classList.add('hidden');draw();};
+  modalCancel.onclick=()=>overlay.classList.add('hidden');
+}
+
+function showSupportModal(node){
+  openModal('Set Support — Node '+node.id, `
+    <div class="modal-opts">
+      <label class="modal-opt"><input type="radio" name="sup" value="free" ${node.support==='free'?'checked':''}/> Free</label>
+      <label class="modal-opt"><input type="radio" name="sup" value="pin" ${node.support==='pin'?'checked':''}/> Pin</label>
+      <label class="modal-opt"><input type="radio" name="sup" value="roller" ${node.support==='roller'||node.support==='roller_x'?'checked':''}/> Roller</label>
+      <label class="modal-opt"><input type="radio" name="sup" value="fixed" ${node.support==='fixed'?'checked':''}/> Fixed</label>
+    </div>`, ()=>{
+    const v=modal.querySelector('input[name=sup]:checked');
+    if(v) node.support=v.value;
+  });
+}
+
+function showLoadModal(node){
+  const existing = S.loads.find(l=>l.nodeId===node.id) || {fx:0,fy:0,moment:0};
+  openModal('Apply Load — Node '+node.id, `
+    <div class="pf"><label>Fx (kN, +right)</label><input type="number" value="${existing.fx}" step="1" id="lfx"/></div>
+    <div class="pf"><label>Fy (kN, +up)</label><input type="number" value="${existing.fy}" step="1" id="lfy"/></div>
+    <div class="pf"><label>Moment (kN-m)</label><input type="number" value="${existing.moment}" step="1" id="lm"/></div>
+  `, ()=>{
+    const fx=parseFloat(modal.querySelector('#lfx').value)||0;
+    const fy=parseFloat(modal.querySelector('#lfy').value)||0;
+    const mom=parseFloat(modal.querySelector('#lm').value)||0;
+    S.loads = S.loads.filter(l=>l.nodeId!==node.id);
+    if(Math.abs(fx)>0.001||Math.abs(fy)>0.001||Math.abs(mom)>0.001)
+      S.loads.push({nodeId:node.id, fx, fy, moment:mom});
+  });
+}
+
+function showMemberLoadModal(member){
+  const existing = S.memberLoads.find(ml=>ml.memberId===member.id) || {udl:0};
+  openModal('Distributed Load — Member '+member.id, `
+    <div class="pf"><label>UDL (kN/m, +down)</label><input type="number" value="${existing.udl}" step="1" id="mudl"/></div>
+  `, ()=>{
+    const udl=parseFloat(modal.querySelector('#mudl').value)||0;
+    S.memberLoads = S.memberLoads.filter(ml=>ml.memberId!==member.id);
+    if(Math.abs(udl)>0.001) S.memberLoads.push({memberId:member.id, udl});
+  });
+}
+
+// ================================================================
+//  RUN ANALYSIS
+// ================================================================
+document.getElementById('runBtn').addEventListener('click', runAnalysis);
+async function runAnalysis(){
+  if(S.nodes.length<2||S.members.length<1){alert('Draw at least 2 nodes and 1 member.');return;}
+  const aType = document.getElementById('analysisType').value;
+  const btn=document.getElementById('runBtn');
+  btn.textContent='Analyzing...';btn.disabled=true;
+
+  // Build model JSON
+  const model = {};
+  if(aType==='truss'){
+    model.nodes = S.nodes.map(n=>({id:n.id, x:n.x, y:n.y, support:n.support==='roller'?'roller_x':n.support}));
+    model.members = S.members.map(m=>({id:m.id, start_node:m.n1, end_node:m.n2, area_m2:m.A, elastic_modulus_gpa:m.E}));
+    model.loads = S.loads.map(l=>({node_id:l.nodeId, fx_kn:l.fx, fy_kn:l.fy}));
+  } else {
+    model.nodes = S.nodes.map(n=>({id:n.id, x:n.x, y:n.y, support:n.support==='roller'?'roller':n.support}));
+    model.members = S.members.map(m=>({id:m.id, start_node:m.n1, end_node:m.n2, area_m2:m.A, inertia_m4:m.I, elastic_modulus_gpa:m.E}));
+    model.nodal_loads = S.loads.map(l=>({node_id:l.nodeId, fx_kn:l.fx, fy_kn:l.fy, moment_kn_m:l.moment||0}));
+    model.member_loads = S.memberLoads.map(ml=>({member_id:ml.memberId, udl_kn_per_m:ml.udl}));
+  }
+
+  try{
+    const resp = await fetch('/api/analyze/structure',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({analysis_type:aType, model}),
+    });
+    const data = await resp.json();
+    if(data.status==='ok'){
+      S.results = data.results;
+      document.getElementById('showDeformed').checked = true;
+      document.getElementById('showForces').checked = true;
+      renderResults(data);
+      draw();
+    } else {
+      alert('Analysis error: '+(data.message||JSON.stringify(data.errors||data)));
+    }
+  } catch(e){ alert('Network error: '+e.message); }
+  btn.textContent='\u25B6 Analyze';btn.disabled=false;
+}
+
+function renderResults(data){
+  const c = document.getElementById('rpContent');
+  c.innerHTML = '';
+  const r = data.results;
+
+  // Summary metrics
+  const metricsDef = [
+    ['Solver', r.solver, ''],
+    ['Nodes', r.num_nodes, ''],
+    ['Members', r.num_members, ''],
+    ['Max Displacement', r.max_displacement_mm, 'mm'],
+  ];
+  if(r.max_rotation_rad!==undefined) metricsDef.push(['Max Rotation', (r.max_rotation_rad*1000).toFixed(2), 'mrad']);
+
+  const grid = document.createElement('div');grid.className='rp-metrics';
+  metricsDef.forEach(([label,val,unit])=>{
+    if(val===undefined||val===null)return;
+    const card = document.createElement('div');card.className='rp-metric';
+    card.innerHTML=`<span>${label}</span><strong>${typeof val==='number'?val.toFixed(4):val} ${unit}</strong>`;
+    grid.appendChild(card);
+  });
+  c.appendChild(grid);
+
+  // Reactions
+  if(r.reactions){
+    const sec=document.createElement('details');sec.open=true;
+    let html='<summary>Reactions</summary><div class="rp-table"><table><tr><th>Node</th><th>Rx (kN)</th><th>Ry (kN)</th>';
+    if(data.analysis_type==='frame') html+='<th>Mz (kN-m)</th>';
+    html+='</tr>';
+    Object.entries(r.reactions).forEach(([nid,rx])=>{
+      html+=`<tr><td>${nid}</td><td>${(rx.rx_kn||0).toFixed(2)}</td><td>${(rx.ry_kn||0).toFixed(2)}</td>`;
+      if(data.analysis_type==='frame') html+=`<td>${(rx.mz_kn_m||0).toFixed(2)}</td>`;
+      html+='</tr>';
+    });
+    html+='</table></div>';sec.innerHTML=html;c.appendChild(sec);
+  }
+
+  // Member forces
+  if(r.member_forces){
+    const sec=document.createElement('details');sec.open=true;
+    let html='<summary>Member Forces</summary><div class="rp-table"><table>';
+    if(data.analysis_type==='truss'){
+      html+='<tr><th>Member</th><th>Axial (kN)</th><th>Type</th><th>Length (m)</th></tr>';
+      Object.entries(r.member_forces).forEach(([mid,mf])=>{
+        const cls = mf.tension_or_compression==='tension'?'t-green':(mf.tension_or_compression==='compression'?'t-red':'');
+        html+=`<tr><td>${mid}</td><td class="${cls}">${(mf.axial_kn||0).toFixed(2)}</td><td>${mf.tension_or_compression||''}</td><td>${(mf.length_m||0).toFixed(2)}</td></tr>`;
       });
-      // Init theme
-      const savedTheme = localStorage.getItem("theme");
-      if (savedTheme === "dark") setTheme(true);
-
-      // ================================================================
-      // Example prompts
-      // ================================================================
-      const examples = {
-        beam_ss: "Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E is 200 GPa, I is 8e-6 m4. Check deflection against L/360.",
-        beam_cantilever: "Analyze a cantilever beam with span 4 m, UDL 15 kN/m, E 200 GPa, I 5e-5 m4. Check deflection against L/180.",
-        beam_point: "Analyze a simply supported beam with span 8 m and a point load of 100 kN at 4 m. E is 200 GPa, I is 3e-5 m4.",
-        beam_combined: "Analyze a simply supported beam, span 10 m, UDL 12 kN/m, point load 80 kN at 5 m, point load 40 kN at 7 m. E 200 GPa, I 2e-4 m4. Check L/360.",
-        beam_fixed: "Analyze a fixed-fixed beam. Span 5 m, uniform load 25 kN/m, E 200 GPa, I 1e-4 m4.",
-        truss: "Analyze a 2D truss with span 8 m, height 3 m, and a load of 100 kN at the top node.",
-        frame: "Analyze a portal frame with bay width 6 m, column height 4 m, gravity load 20 kN/m on beam, and lateral load 15 kN.",
-        column: "Check a column for buckling. Length 5 m, pinned-pinned, area 0.008 m2, I 6e-5 m4, E 200 GPa, Fy 345 MPa, axial load 800 kN.",
-      };
-
-      const exampleSelect = document.getElementById("example-select");
-      exampleSelect.addEventListener("change", () => {
-        if (examples[exampleSelect.value]) {
-          document.getElementById("message").value = examples[exampleSelect.value];
-        }
-        exampleSelect.value = "";
+    } else {
+      html+='<tr><th>Member</th><th>N-start</th><th>V-start</th><th>M-start</th><th>N-end</th><th>V-end</th><th>M-end</th></tr>';
+      Object.entries(r.member_forces).forEach(([mid,mf])=>{
+        html+=`<tr><td>${mid}</td><td>${(mf.axial_start_kn||0).toFixed(1)}</td><td>${(mf.shear_start_kn||0).toFixed(1)}</td><td>${(mf.moment_start_kn_m||0).toFixed(1)}</td><td>${(mf.axial_end_kn||0).toFixed(1)}</td><td>${(mf.shear_end_kn||0).toFixed(1)}</td><td>${(mf.moment_end_kn_m||0).toFixed(1)}</td></tr>`;
       });
+    }
+    html+='</table></div>';sec.innerHTML=html;c.appendChild(sec);
+  }
 
-      // ================================================================
-      // Chat Form
-      // ================================================================
-      const form = document.getElementById("chat-form");
-      const messageInput = document.getElementById("message");
-      const messagesEl = document.getElementById("messages");
-      const analysisPanel = document.getElementById("analysis-panel");
-      const metricsEl = document.getElementById("metrics");
-      const warningsEl = document.getElementById("warnings");
-      const traceList = document.getElementById("trace-list");
-      const reportEl = document.getElementById("report");
+  // Displacements
+  if(r.node_displacements){
+    const sec=document.createElement('details');
+    let html='<summary>Nodal Displacements</summary><div class="rp-table"><table><tr><th>Node</th><th>dx (mm)</th><th>dy (mm)</th><th>Total (mm)</th></tr>';
+    Object.entries(r.node_displacements).forEach(([nid,nd])=>{
+      html+=`<tr><td>${nid}</td><td>${(nd.dx_mm||0).toFixed(4)}</td><td>${(nd.dy_mm||0).toFixed(4)}</td><td>${(nd.total_mm||0).toFixed(4)}</td></tr>`;
+    });
+    html+='</table></div>';sec.innerHTML=html;c.appendChild(sec);
+  }
 
-      const metricLabels = {
-        solver: "Solver",
-        support_type: "Support Type",
-        max_reaction_kn: "Max Reaction",
-        max_shear_kn: "Max Shear",
-        max_moment_kn_m: "Max Moment",
-        max_deflection_mm: "Max Deflection",
-        deflection_limit_mm: "Deflection Limit",
-        deflection_ok: "Deflection OK",
-        left_reaction_kn: "Left Reaction",
-        right_reaction_kn: "Right Reaction",
-        opensees_status: "OpenSees Status",
-        bending_stress_mpa: "Bending Stress",
-        // Column
-        slenderness_ratio: "Slenderness (KL/r)",
-        slenderness_class: "Slenderness Class",
-        euler_buckling_load_kn: "Euler Load",
-        nominal_strength_kn: "Nominal Strength",
-        design_strength_kn: "Design Strength",
-        applied_load_kn: "Applied Load",
-        utilization_ratio: "Utilization",
-        capacity_ok: "Capacity OK",
-        axial_stress_mpa: "Axial Stress",
-        critical_stress_mpa: "Critical Stress",
-        // Truss / Frame
-        max_displacement_mm: "Max Displacement",
-        num_nodes: "Nodes",
-        num_members: "Members",
-      };
+  // Report
+  if(data.report_markdown){
+    const sec=document.createElement('details');
+    sec.innerHTML=`<summary>Full Report</summary><pre class="rp-pre">${data.report_markdown}</pre>`;
+    c.appendChild(sec);
+  }
 
-      const metricUnits = {
-        max_reaction_kn: "kN", max_shear_kn: "kN", max_moment_kn_m: "kN-m",
-        max_deflection_mm: "mm", deflection_limit_mm: "mm",
-        left_reaction_kn: "kN", right_reaction_kn: "kN",
-        bending_stress_mpa: "MPa",
-        euler_buckling_load_kn: "kN", nominal_strength_kn: "kN",
-        design_strength_kn: "kN", applied_load_kn: "kN",
-        axial_stress_mpa: "MPa", critical_stress_mpa: "MPa",
-        max_displacement_mm: "mm",
-      };
+  // Store for export
+  S._lastExport = data;
+}
 
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const message = messageInput.value.trim();
-        if (!message) return;
+// ================================================================
+//  CLEAR
+// ================================================================
+document.getElementById('clearBtn').addEventListener('click',()=>{
+  if(!confirm('Clear the entire model?'))return;
+  S.nodes=[];S.members=[];S.loads=[];S.memberLoads=[];S.nextNodeId=1;S.nextMemberId=1;
+  S.selected=null;S.results=null;S.memberStart=null;
+  document.getElementById('showDeformed').checked=false;
+  document.getElementById('showForces').checked=false;
+  document.getElementById('rpContent').innerHTML='<p class="placeholder">Draw a structure and run analysis.</p>';
+  showProp();draw();
+});
 
-        addMessage("user", message);
-        messageInput.value = "";
-        const pending = addMessage("assistant", "Analyzing...");
+// ================================================================
+//  EXPORT
+// ================================================================
+document.getElementById('exportCsvBtn').addEventListener('click', async()=>{
+  if(!S._lastExport)return;
+  try{
+    const resp=await fetch('/api/export/csv',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({results:S._lastExport.results})});
+    const blob=await resp.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='results.csv';a.click();URL.revokeObjectURL(url);
+  }catch(e){alert('Export failed');}
+});
+document.getElementById('exportMdBtn').addEventListener('click', async()=>{
+  if(!S._lastExport)return;
+  try{
+    const resp=await fetch('/api/export/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({report_markdown:S._lastExport.report_markdown})});
+    const blob=await resp.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='report.md';a.click();URL.revokeObjectURL(url);
+  }catch(e){alert('Export failed');}
+});
 
-        try {
-          const response = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message }),
-          });
-          const data = await response.json();
-          pending.querySelector("p").textContent = data.message || "Done.";
+// Display toggles
+['showGrid','showLabels','showDeformed','showForces'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',draw);
+});
 
-          if (data.response_type === "analysis" && data.analysis) {
-            lastAnalysis = data.analysis;
-            renderAnalysis(data.analysis);
-          }
-        } catch (error) {
-          pending.querySelector("p").textContent =
-            "Could not reach the analysis service. Check the Flask terminal.";
-        }
-      });
+// ================================================================
+//  CHAT TAB
+// ================================================================
+const EXAMPLES = {
+  ss:"Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E is 200 GPa, I is 8e-6 m4. Check deflection against L/360.",
+  cant:"Analyze a cantilever beam with span 4 m, UDL 15 kN/m, E 200 GPa, I 5e-5 m4. Check deflection against L/180.",
+  pt:"Analyze a simply supported beam with span 8 m and a point load of 100 kN at 4 m. E is 200 GPa, I is 3e-5 m4.",
+  truss:"Analyze a 2D truss with span 8 m, height 3 m, and a load of 100 kN at the top node.",
+  frame:"Analyze a portal frame with bay width 6 m, column height 4 m, gravity load 20 kN/m on beam, and lateral load 15 kN.",
+  col:"Check a column for buckling. Length 5 m, pinned-pinned, area 0.008 m2, I 6e-5 m4, E 200 GPa, Fy 345 MPa, axial load 800 kN.",
+};
+document.getElementById('exSel').addEventListener('change',e=>{if(EXAMPLES[e.target.value])document.getElementById('chatInput').value=EXAMPLES[e.target.value];e.target.value='';});
 
-      function addMessage(role, text) {
-        const article = document.createElement("article");
-        article.className = `message ${role}-message`;
-        const paragraph = document.createElement("p");
-        paragraph.textContent = text;
-        article.appendChild(paragraph);
-        messagesEl.appendChild(article);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-        return article;
+const chatForm=document.getElementById('chatForm');
+chatForm.addEventListener('submit', async e=>{
+  e.preventDefault();
+  const msg=document.getElementById('chatInput').value.trim();if(!msg)return;
+  addMsg('user',msg);document.getElementById('chatInput').value='';
+  const pending=addMsg('bot','Analyzing...');
+  try{
+    const resp=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+    const data=await resp.json();
+    pending.querySelector('p').textContent=data.message||'Done.';
+    if(data.response_type==='analysis'&&data.analysis) renderChatResults(data.analysis);
+  }catch(err){pending.querySelector('p').textContent='Error reaching server.';}
+});
+
+function addMsg(role,text){
+  const el=document.getElementById('messages');
+  const art=document.createElement('article');art.className=`msg msg-${role==='user'?'user':'bot'}`;
+  const p=document.createElement('p');p.textContent=text;art.appendChild(p);el.appendChild(art);el.scrollTop=el.scrollHeight;return art;
+}
+
+function renderChatResults(analysis){
+  const c=document.getElementById('chatResults');c.innerHTML='';
+  const r=analysis.results;
+  // Metrics
+  const labels={solver:'Solver',support_type:'Support',max_reaction_kn:'Max Reaction',max_shear_kn:'Max Shear',max_moment_kn_m:'Max Moment',max_deflection_mm:'Max Deflection',deflection_ok:'Deflection OK',slenderness_ratio:'KL/r',utilization_ratio:'Utilization',capacity_ok:'Capacity OK',max_displacement_mm:'Max Disp'};
+  const units={max_reaction_kn:'kN',max_shear_kn:'kN',max_moment_kn_m:'kN-m',max_deflection_mm:'mm',max_displacement_mm:'mm'};
+  const grid=document.createElement('div');grid.className='rp-metrics';
+  Object.entries(labels).forEach(([k,lbl])=>{
+    if(!(k in r))return;
+    const v=r[k], u=units[k]||'';
+    const card=document.createElement('div');card.className='rp-metric';
+    if(typeof v==='boolean') card.classList.add(v?'pass':'fail');
+    const fmt=typeof v==='number'?(Math.abs(v)>=100?v.toFixed(2):v.toPrecision(4)):v===true?'Pass':v===false?'Fail':v??'N/A';
+    card.innerHTML=`<span>${lbl}</span><strong>${fmt} ${u}</strong>`;grid.appendChild(card);
+  });
+  c.appendChild(grid);
+
+  // Diagrams
+  if(analysis.diagrams&&analysis.diagrams.positions&&analysis.diagrams.positions.length>0){
+    const dg=analysis.diagrams;
+    const div=document.createElement('div');div.id='chatDiagram';div.style.marginTop='12px';c.appendChild(div);
+    const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+    const bg=isDark?'#1a2029':'#fff', tc=isDark?'#c8d0da':'#172026', gc=isDark?'#2d3748':'#e2e8f0';
+    Plotly.newPlot(div,[
+      {x:dg.positions,y:dg.shear_kn,name:'Shear (kN)',line:{color:'#2563eb'},fill:'tozeroy',fillcolor:'rgba(37,99,235,0.08)'},
+      {x:dg.positions,y:dg.moment_kn_m,name:'Moment (kN-m)',line:{color:'#dc2626'},yaxis:'y2'},
+    ],{
+      xaxis:{title:'Position (m)',gridcolor:gc,color:tc},
+      yaxis:{title:'Shear (kN)',gridcolor:gc,color:tc},
+      yaxis2:{title:'Moment (kN-m)',overlaying:'y',side:'right',color:tc},
+      plot_bgcolor:bg,paper_bgcolor:bg,margin:{t:30,r:60,b:45,l:55},height:240,
+      font:{family:'Inter,sans-serif',color:tc},legend:{x:0,y:1.15,orientation:'h'},
+    },{responsive:true,displayModeBar:false});
+  }
+
+  // Warnings
+  if(analysis.warnings&&analysis.warnings.length){
+    const wd=document.createElement('div');wd.className='rp-warnings';
+    analysis.warnings.forEach(w=>{const p=document.createElement('p');p.textContent=w;wd.appendChild(p);});
+    c.appendChild(wd);
+  }
+
+  // Report
+  if(analysis.report_markdown){
+    const d=document.createElement('details');d.innerHTML=`<summary>Full Report</summary><pre class="rp-pre">${analysis.report_markdown}</pre>`;c.appendChild(d);
+  }
+}
+
+// ================================================================
+//  SECTIONS TAB
+// ================================================================
+document.getElementById('secSearch').addEventListener('click', async()=>{
+  const t=document.getElementById('secType').value, q=document.getElementById('secQ').value.trim();
+  const c=document.getElementById('secResults');
+  let url=`/api/sections?type=${t}`;if(q)url+=`&q=${encodeURIComponent(q)}`;
+  try{
+    const resp=await fetch(url);const data=await resp.json();c.innerHTML='';
+    if(data.sections&&Array.isArray(data.sections)){
+      if(typeof data.sections[0]==='string'){
+        const g=document.createElement('div');g.className='sec-grid';
+        data.sections.forEach(name=>{
+          const b=document.createElement('button');b.className='sec-name';b.textContent=name;
+          b.addEventListener('click',async()=>{
+            const r2=await fetch(`/api/sections/${encodeURIComponent(name)}`);const d2=await r2.json();
+            if(d2.status==='ok'){c.innerHTML='';c.appendChild(makeSectionCard(d2.section));}
+          });g.appendChild(b);
+        });c.appendChild(g);
+      } else {
+        data.sections.forEach(s=>c.appendChild(makeSectionCard(s)));
       }
+    }
+  }catch(e){c.innerHTML='<p class="placeholder">Search failed.</p>';}
+});
 
-      function renderAnalysis(analysis) {
-        analysisPanel.classList.remove("hidden");
-        metricsEl.replaceChildren();
-        warningsEl.replaceChildren();
-        traceList.replaceChildren();
+function makeSectionCard(s){
+  const d=document.createElement('div');d.className='sec-card';
+  d.innerHTML=`<h3>${s.name}</h3><div class="sec-props">
+    ${[['Weight',s.weight_kg_per_m,'kg/m'],['Area',s.area_m2.toExponential(3),'m2'],['Depth',s.depth_mm,'mm'],['bf',s.flange_width_mm,'mm'],
+       ['tf',s.flange_thickness_mm,'mm'],['tw',s.web_thickness_mm,'mm'],['Ix',s.Ix_m4.toExponential(3),'m4'],['Iy',s.Iy_m4.toExponential(3),'m4'],
+       ['Sx',s.Sx_m3.toExponential(3),'m3'],['Sy',s.Sy_m3.toExponential(3),'m3'],['rx',s.rx_m.toFixed(4),'m'],['ry',s.ry_m.toFixed(4),'m']
+    ].map(([l,v,u])=>`<div><span>${l}</span><strong>${v} ${u}</strong></div>`).join('')}
+  </div>`;return d;
+}
 
-        // Update header
-        const typeLabel = document.getElementById("analysis-type-label");
-        const title = document.getElementById("analysis-title");
-        const aType = analysis.analysis_type || "beam";
-        const typeNames = { beam: "Beam Analysis", truss: "Truss Analysis", frame: "Frame Analysis", column: "Column Analysis" };
-        typeLabel.textContent = typeNames[aType] || "Analysis Result";
-        title.textContent = (analysis.results.support_type || aType).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) + " Check";
-
-        // Metrics
-        Object.entries(metricLabels).forEach(([key, label]) => {
-          if (!(key in analysis.results)) return;
-          const value = formatValue(analysis.results[key], metricUnits[key]);
-          const item = document.createElement("article");
-          item.className = "metric";
-          // Color-code boolean metrics
-          const boolVal = analysis.results[key];
-          if (typeof boolVal === "boolean") {
-            item.classList.add(boolVal ? "metric-pass" : "metric-fail");
-          }
-          item.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
-          metricsEl.appendChild(item);
-        });
-
-        // Warnings
-        analysis.warnings.forEach((warning) => {
-          const item = document.createElement("p");
-          item.textContent = warning;
-          warningsEl.appendChild(item);
-        });
-
-        // Traces
-        analysis.traces.forEach((trace) => {
-          const item = document.createElement("li");
-          item.textContent = `${trace.agent}: ${trace.summary}`;
-          traceList.appendChild(item);
-        });
-
-        // Report
-        reportEl.textContent = analysis.report_markdown;
-
-        // Diagrams (beam only)
-        const diagramSection = document.getElementById("diagrams-section");
-        if (analysis.diagrams && analysis.diagrams.positions && analysis.diagrams.positions.length > 0) {
-          diagramSection.classList.remove("hidden");
-          currentDiagramType = "sfd";
-          document.querySelectorAll(".diagram-tab").forEach(t => t.classList.remove("active"));
-          document.querySelector('.diagram-tab[data-diagram="sfd"]').classList.add("active");
-          plotDiagram(analysis.diagrams, "sfd");
-        } else {
-          diagramSection.classList.add("hidden");
-        }
-
-        // Detailed results for truss/frame
-        const detailedSection = document.getElementById("detailed-results");
-        if (aType === "truss" || aType === "frame") {
-          detailedSection.classList.remove("hidden");
-          const detailedJson = document.getElementById("detailed-json");
-          const detail = {};
-          if (analysis.results.reactions) detail.reactions = analysis.results.reactions;
-          if (analysis.results.member_forces) detail.member_forces = analysis.results.member_forces;
-          if (analysis.results.node_displacements) detail.node_displacements = analysis.results.node_displacements;
-          detailedJson.textContent = JSON.stringify(detail, null, 2);
-        } else {
-          detailedSection.classList.add("hidden");
-        }
-      }
-
-      function formatValue(value, unit) {
-        if (typeof value === "number") {
-          const rounded = Math.abs(value) >= 100 ? value.toFixed(2) : value.toPrecision(4);
-          return unit ? `${rounded} ${unit}` : rounded;
-        }
-        if (typeof value === "boolean") return value ? "Pass" : "Fail";
-        if (value === null || value === undefined) return "N/A";
-        return String(value);
-      }
-
-      // ================================================================
-      // Diagram Plotting
-      // ================================================================
-      document.querySelectorAll(".diagram-tab").forEach((tab) => {
-        tab.addEventListener("click", () => {
-          document.querySelectorAll(".diagram-tab").forEach((t) => t.classList.remove("active"));
-          tab.classList.add("active");
-          currentDiagramType = tab.dataset.diagram;
-          if (lastAnalysis && lastAnalysis.diagrams) {
-            plotDiagram(lastAnalysis.diagrams, currentDiagramType);
-          }
-        });
+// ================================================================
+//  HISTORY TAB
+// ================================================================
+document.getElementById('histRefresh').addEventListener('click', async()=>{
+  const c=document.getElementById('histList');c.innerHTML='<p class="placeholder">Loading...</p>';
+  try{
+    const resp=await fetch('/api/history?limit=50');const data=await resp.json();c.innerHTML='';
+    if(data.history&&data.history.length){
+      data.history.forEach(item=>{
+        const card=document.createElement('div');card.className='hist-card';
+        const date=new Date(item.timestamp*1000).toLocaleString();
+        card.innerHTML=`<div class="hist-hdr"><span class="hist-type">${(item.analysis_type||'beam').toUpperCase()}</span><span class="hist-date">${date}</span></div><p class="hist-prompt">${(item.prompt||'').substring(0,120)}</p>`;
+        card.addEventListener('click',()=>{
+          document.getElementById('chatInput').value=item.prompt;
+          document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+          document.querySelectorAll('.page').forEach(p=>{p.classList.add('hidden');p.classList.remove('active');});
+          document.querySelector('.tab[data-tab="chat"]').classList.add('active');
+          document.getElementById('tab-chat').classList.remove('hidden');
+          document.getElementById('tab-chat').classList.add('active');
+        });c.appendChild(card);
       });
+    } else c.innerHTML='<p class="placeholder">No history yet.</p>';
+  }catch(e){c.innerHTML='<p class="placeholder">Failed to load.</p>';}
+});
 
-      function plotDiagram(diagrams, type) {
-        const plotDiv = document.getElementById("diagram-plot");
-        const x = diagrams.positions;
-        let y, ylabel, title, color;
-
-        if (type === "sfd") {
-          y = diagrams.shear_kn;
-          ylabel = "Shear (kN)";
-          title = "Shear Force Diagram";
-          color = "#2563eb";
-        } else if (type === "bmd") {
-          y = diagrams.moment_kn_m;
-          ylabel = "Moment (kN-m)";
-          title = "Bending Moment Diagram";
-          color = "#dc2626";
-        } else {
-          y = diagrams.deflection_mm;
-          ylabel = "Deflection (mm)";
-          title = "Deflection Shape";
-          color = "#059669";
-        }
-
-        const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-        const bgColor = isDark ? "#1e2530" : "#ffffff";
-        const textColor = isDark ? "#c8d0da" : "#172026";
-        const gridColor = isDark ? "#2d3748" : "#e2e8f0";
-
-        const trace = {
-          x: x, y: y, type: "scatter", mode: "lines",
-          fill: "tozeroy", fillcolor: color + "18",
-          line: { color: color, width: 2 },
-          name: ylabel,
-        };
-
-        const layout = {
-          title: { text: title, font: { size: 14, color: textColor } },
-          xaxis: { title: "Position (m)", gridcolor: gridColor, color: textColor },
-          yaxis: { title: ylabel, gridcolor: gridColor, color: textColor },
-          plot_bgcolor: bgColor,
-          paper_bgcolor: bgColor,
-          margin: { t: 40, r: 20, b: 50, l: 60 },
-          height: 280,
-          font: { family: "inherit", color: textColor },
-        };
-
-        Plotly.newPlot(plotDiv, [trace], layout, { responsive: true, displayModeBar: false });
-      }
-
-      // ================================================================
-      // Export Buttons
-      // ================================================================
-      document.getElementById("btn-export-csv").addEventListener("click", async () => {
-        if (!lastAnalysis) return;
-        try {
-          const resp = await fetch("/api/export/csv", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ results: lastAnalysis.results }),
-          });
-          const blob = await resp.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url; a.download = "analysis_results.csv"; a.click();
-          URL.revokeObjectURL(url);
-        } catch (e) { alert("Export failed"); }
-      });
-
-      document.getElementById("btn-export-report").addEventListener("click", async () => {
-        if (!lastAnalysis) return;
-        try {
-          const resp = await fetch("/api/export/report", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ report_markdown: lastAnalysis.report_markdown }),
-          });
-          const blob = await resp.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url; a.download = "analysis_report.md"; a.click();
-          URL.revokeObjectURL(url);
-        } catch (e) { alert("Export failed"); }
-      });
-
-      // ================================================================
-      // Structured Forms
-      // ================================================================
-      document.querySelectorAll(".form-tab").forEach((tab) => {
-        tab.addEventListener("click", () => {
-          document.querySelectorAll(".form-tab").forEach((t) => t.classList.remove("active"));
-          document.querySelectorAll(".struct-form").forEach((f) => { f.classList.add("hidden"); f.classList.remove("active"); });
-          tab.classList.add("active");
-          const formMap = {
-            beam: "beam-form",
-            column: "column-form",
-            "truss-form": "truss-form-el",
-            "frame-form": "frame-form-el",
-          };
-          const formEl = document.getElementById(formMap[tab.dataset.form]);
-          if (formEl) { formEl.classList.remove("hidden"); formEl.classList.add("active"); }
-        });
-      });
-
-      // Beam form submit
-      document.getElementById("beam-form").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const support = document.getElementById("f-support").value;
-        const span = document.getElementById("f-span").value;
-        const udl = document.getElementById("f-udl").value;
-        const E = document.getElementById("f-E").value;
-        const I = document.getElementById("f-I").value;
-        const S = document.getElementById("f-S").value;
-        const ratio = document.getElementById("f-defl-ratio").value;
-        const plText = document.getElementById("f-point-loads").value.trim();
-
-        let prompt = `Analyze a ${support.replace(/_/g, " ")} beam. Span is ${span} m`;
-        if (parseFloat(udl) > 0) prompt += `, uniform load is ${udl} kN/m`;
-        prompt += `, E is ${E} GPa`;
-        if (I) prompt += `, I is ${I} m4`;
-        if (S) prompt += `, section modulus is ${S} m3`;
-        prompt += `. Check deflection against L/${ratio}`;
-
-        if (plText) {
-          const lines = plText.split("\n").filter(l => l.trim());
-          lines.forEach(line => {
-            const parts = line.trim().split(/\s+/);
-            if (parts.length >= 2) {
-              prompt += `. Point load ${parts[0]} kN at ${parts[1]} m`;
-            }
-          });
-        }
-        prompt += ".";
-
-        await runFormAnalysis(prompt);
-      });
-
-      // Column form submit
-      document.getElementById("column-form").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const end = document.getElementById("fc-end").value;
-        const L = document.getElementById("fc-length").value;
-        const A = document.getElementById("fc-area").value;
-        const I = document.getElementById("fc-I").value;
-        const E = document.getElementById("fc-E").value;
-        const Fy = document.getElementById("fc-Fy").value;
-        const P = document.getElementById("fc-load").value;
-
-        const prompt = `Check a column for buckling. Length ${L} m, ${end.replace(/_/g, "-")}, area ${A} m2, I ${I} m4, E ${E} GPa, Fy ${Fy} MPa, axial load ${P} kN.`;
-        await runFormAnalysis(prompt);
-      });
-
-      // Truss form submit
-      document.getElementById("truss-form-el").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const span = document.getElementById("ft-span").value;
-        const height = document.getElementById("ft-height").value;
-        const load = document.getElementById("ft-load").value;
-        const prompt = `Analyze a 2D truss with span ${span} m, height ${height} m, and a load of ${load} kN at the top node.`;
-        await runFormAnalysis(prompt);
-      });
-
-      // Frame form submit
-      document.getElementById("frame-form-el").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const w = document.getElementById("ff-width").value;
-        const h = document.getElementById("ff-height").value;
-        const g = document.getElementById("ff-gravity").value;
-        const lat = document.getElementById("ff-lateral").value;
-        let prompt = `Analyze a portal frame with bay width ${w} m, column height ${h} m`;
-        if (parseFloat(g) > 0) prompt += `, gravity load ${g} kN/m on beam`;
-        if (parseFloat(lat) > 0) prompt += `, lateral load ${lat} kN`;
-        prompt += ".";
-        await runFormAnalysis(prompt);
-      });
-
-      async function runFormAnalysis(prompt) {
-        const resultsDiv = document.getElementById("form-results");
-        resultsDiv.innerHTML = '<p class="placeholder-text">Analyzing...</p>';
-        try {
-          const resp = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: prompt }),
-          });
-          const data = await resp.json();
-          if (data.response_type === "analysis" && data.analysis) {
-            lastAnalysis = data.analysis;
-            renderFormResults(data.analysis, resultsDiv);
-          } else {
-            resultsDiv.innerHTML = `<p>${data.message || "No analysis result."}</p>`;
-          }
-        } catch (err) {
-          resultsDiv.innerHTML = '<p class="placeholder-text">Error: Could not reach server.</p>';
-        }
-      }
-
-      function renderFormResults(analysis, container) {
-        container.replaceChildren();
-        const aType = analysis.analysis_type || "beam";
-        const typeNames = { beam: "Beam Analysis", truss: "Truss Analysis", frame: "Frame Analysis", column: "Column Analysis" };
-
-        // Header
-        const header = document.createElement("div");
-        header.className = "panel-header";
-        header.innerHTML = `<p class="eyebrow">${typeNames[aType] || "Result"}</p><h2>${(analysis.results.solver || "").replace(/_/g, " ")}</h2>`;
-        container.appendChild(header);
-
-        // Metrics grid
-        const metricsGrid = document.createElement("div");
-        metricsGrid.className = "metrics";
-        Object.entries(metricLabels).forEach(([key, label]) => {
-          if (!(key in analysis.results)) return;
-          const value = formatValue(analysis.results[key], metricUnits[key]);
-          const item = document.createElement("article");
-          item.className = "metric";
-          const boolVal = analysis.results[key];
-          if (typeof boolVal === "boolean") item.classList.add(boolVal ? "metric-pass" : "metric-fail");
-          item.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
-          metricsGrid.appendChild(item);
-        });
-        container.appendChild(metricsGrid);
-
-        // Warnings
-        if (analysis.warnings.length) {
-          const warnDiv = document.createElement("div");
-          warnDiv.className = "warnings";
-          analysis.warnings.forEach(w => {
-            const p = document.createElement("p");
-            p.textContent = w;
-            warnDiv.appendChild(p);
-          });
-          container.appendChild(warnDiv);
-        }
-
-        // Diagrams for beam
-        if (analysis.diagrams && analysis.diagrams.positions && analysis.diagrams.positions.length > 0) {
-          const diagDiv = document.createElement("div");
-          diagDiv.id = "form-diagram-plot";
-          diagDiv.className = "diagram-plot";
-          diagDiv.style.marginTop = "16px";
-          container.appendChild(diagDiv);
-
-          // Plot all three
-          const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-          const bgColor = isDark ? "#1e2530" : "#ffffff";
-          const textColor = isDark ? "#c8d0da" : "#172026";
-          const gridColor = isDark ? "#2d3748" : "#e2e8f0";
-
-          const traces = [
-            { x: analysis.diagrams.positions, y: analysis.diagrams.shear_kn, name: "Shear (kN)", line: { color: "#2563eb" } },
-            { x: analysis.diagrams.positions, y: analysis.diagrams.moment_kn_m, name: "Moment (kN-m)", line: { color: "#dc2626" }, yaxis: "y2" },
-          ];
-          const layout = {
-            title: { text: "SFD & BMD", font: { size: 14, color: textColor } },
-            xaxis: { title: "Position (m)", gridcolor: gridColor, color: textColor },
-            yaxis: { title: "Shear (kN)", gridcolor: gridColor, color: textColor, side: "left" },
-            yaxis2: { title: "Moment (kN-m)", overlaying: "y", side: "right", color: textColor },
-            plot_bgcolor: bgColor, paper_bgcolor: bgColor,
-            margin: { t: 40, r: 60, b: 50, l: 60 }, height: 260,
-            font: { family: "inherit", color: textColor },
-            legend: { x: 0, y: 1.15, orientation: "h" },
-          };
-          Plotly.newPlot(diagDiv, traces, layout, { responsive: true, displayModeBar: false });
-        }
-
-        // Report
-        const reportDetails = document.createElement("details");
-        reportDetails.style.marginTop = "12px";
-        reportDetails.innerHTML = `<summary>Full Report</summary><pre>${analysis.report_markdown}</pre>`;
-        container.appendChild(reportDetails);
-      }
-
-      // ================================================================
-      // Section Lookup in beam form
-      // ================================================================
-      document.getElementById("f-section-apply").addEventListener("click", async () => {
-        const name = document.getElementById("f-section-search").value.trim();
-        if (!name) return;
-        try {
-          const resp = await fetch(`/api/sections/${encodeURIComponent(name)}`);
-          const data = await resp.json();
-          if (data.status === "ok" && data.section) {
-            const s = data.section;
-            document.getElementById("f-I").value = s.Ix_m4;
-            document.getElementById("f-A").value = s.area_m2;
-            if (s.Sx_m3) document.getElementById("f-S").value = s.Sx_m3;
-            document.getElementById("f-section-info").textContent =
-              `${s.name}: A=${s.area_m2.toExponential(3)} m2, Ix=${s.Ix_m4.toExponential(3)} m4, Sx=${s.Sx_m3.toExponential(3)} m3, d=${s.depth_mm}mm`;
-          } else {
-            document.getElementById("f-section-info").textContent = "Section not found.";
-          }
-        } catch (e) {
-          document.getElementById("f-section-info").textContent = "Lookup failed.";
-        }
-      });
-
-      // ================================================================
-      // Section Library Tab
-      // ================================================================
-      document.getElementById("section-search-btn").addEventListener("click", async () => {
-        const type = document.getElementById("section-type-filter").value;
-        const query = document.getElementById("section-search-input").value.trim();
-        const resultsDiv = document.getElementById("section-results");
-
-        let url = `/api/sections?type=${type}`;
-        if (query) url += `&q=${encodeURIComponent(query)}`;
-
-        try {
-          const resp = await fetch(url);
-          const data = await resp.json();
-          resultsDiv.replaceChildren();
-
-          if (data.sections && Array.isArray(data.sections)) {
-            if (typeof data.sections[0] === "string") {
-              // List of names
-              const grid = document.createElement("div");
-              grid.className = "section-name-grid";
-              data.sections.forEach(name => {
-                const btn = document.createElement("button");
-                btn.className = "section-name-btn";
-                btn.textContent = name;
-                btn.addEventListener("click", () => loadSectionDetail(name, resultsDiv));
-                grid.appendChild(btn);
-              });
-              resultsDiv.appendChild(grid);
-            } else {
-              // Detailed results
-              data.sections.forEach(s => {
-                const card = createSectionCard(s);
-                resultsDiv.appendChild(card);
-              });
-            }
-          }
-        } catch (e) {
-          resultsDiv.innerHTML = '<p class="placeholder-text">Search failed.</p>';
-        }
-      });
-
-      async function loadSectionDetail(name, container) {
-        try {
-          const resp = await fetch(`/api/sections/${encodeURIComponent(name)}`);
-          const data = await resp.json();
-          if (data.status === "ok") {
-            container.replaceChildren();
-            container.appendChild(createSectionCard(data.section));
-          }
-        } catch (e) {}
-      }
-
-      function createSectionCard(s) {
-        const card = document.createElement("div");
-        card.className = "section-card";
-        card.innerHTML = `
-          <h3>${s.name}</h3>
-          <div class="section-props">
-            <div><span>Weight</span><strong>${s.weight_kg_per_m} kg/m</strong></div>
-            <div><span>Area</span><strong>${s.area_m2.toExponential(3)} m2</strong></div>
-            <div><span>Depth</span><strong>${s.depth_mm} mm</strong></div>
-            <div><span>Flange Width</span><strong>${s.flange_width_mm} mm</strong></div>
-            <div><span>Flange Thickness</span><strong>${s.flange_thickness_mm} mm</strong></div>
-            <div><span>Web Thickness</span><strong>${s.web_thickness_mm} mm</strong></div>
-            <div><span>Ix</span><strong>${s.Ix_m4.toExponential(3)} m4</strong></div>
-            <div><span>Iy</span><strong>${s.Iy_m4.toExponential(3)} m4</strong></div>
-            <div><span>Sx</span><strong>${s.Sx_m3.toExponential(3)} m3</strong></div>
-            <div><span>Sy</span><strong>${s.Sy_m3.toExponential(3)} m3</strong></div>
-            <div><span>Zx</span><strong>${s.Zx_m3.toExponential(3)} m3</strong></div>
-            <div><span>Zy</span><strong>${s.Zy_m3.toExponential(3)} m3</strong></div>
-            <div><span>rx</span><strong>${s.rx_m.toFixed(4)} m</strong></div>
-            <div><span>ry</span><strong>${s.ry_m.toFixed(4)} m</strong></div>
-          </div>
-        `;
-        return card;
-      }
-
-      // ================================================================
-      // History Tab
-      // ================================================================
-      document.getElementById("load-history-btn").addEventListener("click", async () => {
-        const listDiv = document.getElementById("history-list");
-        listDiv.innerHTML = '<p class="placeholder-text">Loading...</p>';
-        try {
-          const resp = await fetch("/api/history?limit=50");
-          const data = await resp.json();
-          listDiv.replaceChildren();
-
-          if (data.history && data.history.length > 0) {
-            data.history.forEach(item => {
-              const card = document.createElement("div");
-              card.className = "history-card";
-              const date = new Date(item.timestamp * 1000).toLocaleString();
-              const typeLabel = (item.analysis_type || "beam").toUpperCase();
-              card.innerHTML = `
-                <div class="history-card-header">
-                  <span class="history-type">${typeLabel}</span>
-                  <span class="history-date">${date}</span>
-                </div>
-                <p class="history-prompt">${item.prompt.substring(0, 120)}${item.prompt.length > 120 ? '...' : ''}</p>
-              `;
-              card.addEventListener("click", () => {
-                // Load into chat
-                document.getElementById("message").value = item.prompt;
-                document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-                document.querySelectorAll(".tab-content").forEach(t => { t.classList.add("hidden"); t.classList.remove("active"); });
-                document.querySelector('.nav-btn[data-tab="chat"]').classList.add("active");
-                const chatTab = document.getElementById("tab-chat");
-                chatTab.classList.add("active");
-                chatTab.classList.remove("hidden");
-              });
-              listDiv.appendChild(card);
-            });
-          } else {
-            listDiv.innerHTML = '<p class="placeholder-text">No analysis history yet.</p>';
-          }
-        } catch (e) {
-          listDiv.innerHTML = '<p class="placeholder-text">Failed to load history.</p>';
-        }
-      });
-    </script>
-  </body>
+// Initial draw
+resizeCanvas();
+</script>
+</body>
 </html>

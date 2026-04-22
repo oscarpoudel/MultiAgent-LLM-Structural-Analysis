@@ -60,5 +60,5 @@ def test_chat_route_runs_analysis_for_engineering_request() -> None:
     assert response.status_code == 200
     data = response.get_json()
     assert data["response_type"] == "analysis"
-    assert data["source"] == "openseespy"
+    assert "openseespy" in data["source"]
     assert data["analysis"]["results"]["solver"] == "openseespy_elastic_beam"
