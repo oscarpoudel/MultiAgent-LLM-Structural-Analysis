@@ -17,7 +17,7 @@ from app.models import (
     AnalyzeRequest, AnalyzeResponse, ChatRequest, ChatResponse,
     TrussInputs, TrussNode, TrussMember, TrussLoad,
     FrameInputs, FrameNode, FrameMember, FrameLoad, FrameMemberLoad,
-    BeamInputs, PointLoad, ColumnInputs, DiagramData, AgentTrace,
+    BeamInputs, PointLoad, ColumnInputs, DiagramData, AgentTrace, CanvasAction,
 )
 from app.tools.report import format_engineering_report
 from app.tools.sections import get_section, list_sections, search_sections, section_to_dict
@@ -134,14 +134,62 @@ def build_analysis_response(prompt: str) -> AnalyzeResponse:
 
 def is_structural_analysis_request(message: str) -> bool:
     text = message.lower()
-    analysis_terms = [
-        "analyze", "beam", "column", "frame", "truss",
-        "load", "span", "moment", "shear", "deflection",
-        "stress", "opensees", "kn", "gpa", "m4", "l/",
-        "buckling", "euler", "slenderness", "cantilever",
-        "fixed", "portal", "axial",
+    conversational_starts = [
+        "hi", "hello", "hey", "what is", "what are", "how do", "how can",
+        "why", "explain", "define", "tell me about", "help me",
     ]
-    return any(term in text for term in analysis_terms)
+    if any(text.startswith(term) for term in conversational_starts):
+        return False
+
+    analysis_phrases = [
+        "run analysis", "run the analysis", "perform analysis", "perform an analysis",
+        "do analysis", "solve", "calculate", "compute", "evaluate",
+        "analyze", "analyse", "check",
+    ]
+    structural_terms = [
+        "beam", "column", "frame", "truss", "load", "span", "moment",
+        "shear", "deflection", "stress", "opensees", "kn", "gpa", "m4",
+        "l/", "buckling", "euler", "slenderness", "cantilever", "fixed",
+        "portal", "axial", "drawing", "drawn", "canvas", "model", "structure", "analysis",
+    ]
+    return any(term in text for term in analysis_phrases) and any(term in text for term in structural_terms)
+
+
+def is_drawing_analysis_request(message: str) -> bool:
+    text = message.lower()
+    drawing_terms = ["drawing", "drawn", "canvas", "model", "current structure", "this structure", "sketch"]
+    terse_analysis_terms = ["perform analysis", "run analysis", "run the analysis", "analyze it", "analyse it", "analyze this"]
+    return any(term in text for term in drawing_terms) or any(term in text for term in terse_analysis_terms)
+
+
+def has_drawn_structure(model: dict | None) -> bool:
+    if not model:
+        return False
+    return len(model.get("nodes", [])) >= 2 and len(model.get("members", [])) >= 1
+
+
+def analyze_structure_model(analysis_type: str, model: dict) -> tuple[dict, str]:
+    if analysis_type == "truss":
+        from app.tools.truss import analyze_truss as run_truss
+        inputs = TrussInputs.model_validate(model)
+        results = run_truss(inputs)
+        report_md = format_engineering_report(
+            "Canvas-drawn truss structure",
+            ["Preliminary elastic analysis.", "All joints pin-connected."],
+            [], results, analysis_type="truss",
+        )
+    else:
+        from app.tools.frame import analyze_frame as run_frame
+        inputs = FrameInputs.model_validate(model)
+        results = run_frame(inputs)
+        report_md = format_engineering_report(
+            "Canvas-drawn frame structure",
+            ["Preliminary elastic analysis.", "Rigid beam-column connections."],
+            [], results, analysis_type="frame",
+        )
+
+    _save_history(analysis_type, f"Canvas {analysis_type}", results, report_md)
+    return results, report_md
 
 
 # ---------------------------------------------------------------------------
@@ -180,8 +228,21 @@ def chat():
     except ValidationError as error:
         return jsonify({"status": "error", "errors": error.errors()}), 422
 
+    agent_system = get_agent_system()
+    canvas_decision, canvas_source = agent_system.route_canvas_tool(chat_request.message)
+    if canvas_decision.action != "none":
+        canvas_action = CanvasAction(action=canvas_decision.action, arguments=canvas_decision.arguments)
+        response = ChatResponse(
+            status="ok",
+            response_type="canvas_action",
+            message=canvas_decision.message or "I updated the canvas.",
+            source=f"canvas_tool:{canvas_source}",
+            canvas_action=canvas_action,
+        )
+        return jsonify(response.model_dump(mode="json"))
+
     if not is_structural_analysis_request(chat_request.message):
-        chat_result = get_agent_system().chat(chat_request.message)
+        chat_result = agent_system.chat(chat_request.message)
         response = ChatResponse(
             status="ok",
             response_type="conversation",
@@ -190,7 +251,25 @@ def chat():
         )
         return jsonify(response.model_dump(mode="json"))
 
-    analysis = build_analysis_response(chat_request.message)
+    if has_drawn_structure(chat_request.model) and is_drawing_analysis_request(chat_request.message):
+        analysis_type = (chat_request.analysis_type or "frame").lower()
+        results, report_md = analyze_structure_model(analysis_type, chat_request.model)
+        analysis = AnalyzeResponse(
+            status="ok",
+            analysis_type=analysis_type,
+            assumptions=[
+                "Preliminary elastic analysis only.",
+                "Input model was taken from the current canvas drawing.",
+            ],
+            warnings=["Not a substitute for licensed engineering review or full code compliance."],
+            traces=[],
+            results=results,
+            report_markdown=report_md,
+            diagrams=None,
+        )
+    else:
+        analysis = build_analysis_response(chat_request.message)
+
     analysis_type = analysis.analysis_type
     type_labels = {
         "beam": "beam analysis",
@@ -221,26 +300,7 @@ def analyze_structure():
     analysis_type = data.get("analysis_type", "frame")
 
     try:
-        if analysis_type == "truss":
-            from app.tools.truss import analyze_truss as run_truss
-            inputs = TrussInputs.model_validate(data.get("model", {}))
-            results = run_truss(inputs)
-            report_md = format_engineering_report(
-                "Canvas-drawn truss structure",
-                ["Preliminary elastic analysis.", "All joints pin-connected."],
-                [], results, analysis_type="truss",
-            )
-        else:
-            from app.tools.frame import analyze_frame as run_frame
-            inputs = FrameInputs.model_validate(data.get("model", {}))
-            results = run_frame(inputs)
-            report_md = format_engineering_report(
-                "Canvas-drawn frame structure",
-                ["Preliminary elastic analysis.", "Rigid beam-column connections."],
-                [], results, analysis_type="frame",
-            )
-
-        _save_history(analysis_type, f"Canvas {analysis_type}", results, report_md)
+        results, report_md = analyze_structure_model(analysis_type, data.get("model", {}))
 
         return jsonify({
             "status": "ok",

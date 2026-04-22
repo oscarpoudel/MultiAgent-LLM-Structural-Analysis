@@ -137,6 +137,29 @@ Invoke-RestMethod -Method Post `
 python -m pytest -p no:cacheprovider
 ```
 
+## Debug Chat Routing
+
+Use the local CLI debugger to see how chat messages are routed before opening the browser:
+
+```powershell
+python scripts/debug_chat.py "draw a simply supported beam with 2m length and 10 kN load at middle"
+```
+
+Interactive mode:
+
+```powershell
+python scripts/debug_chat.py
+```
+
+The debugger prints:
+
+- `canvas-router`: the canvas tool decision (`none`, `clear_canvas`, `draw_simple_beam`)
+- `chat-response`: the final `/api/chat` response type
+- `canvas-action`: tool payload sent to the browser
+- `analysis-traces`: solver/agent traces when an analysis is run
+
+If `source` is `fallback`, the live LLM router was unavailable, disabled, or timed out and the deterministic parser handled the prompt. If `source` is `llm`, the configured LLM produced the routing decision.
+
 ## Deployment Notes
 
 For production-like local hosting, use Waitress:

@@ -1,0 +1,20 @@
+import { initAnalysis } from './analysis.js';
+import { draw, initCanvas, resizeCanvas } from './canvas.js';
+import { initChat } from './chat.js';
+import { initHistory } from './history.js';
+import { initModals, showLoadModal, showMemberLoadModal, showSupportModal } from './modals.js';
+import { initExports } from './results.js';
+import { initSections } from './sections.js';
+import { initTabs } from './tabs.js';
+import { initTheme } from './theme.js';
+
+initTheme();
+initModals(draw);
+initCanvas({ showSupportModal, showLoadModal, showMemberLoadModal });
+initTabs({ onDrawTab: resizeCanvas });
+initAnalysis();
+initExports();
+initChat();
+initSections();
+initHistory();
+resizeCanvas();

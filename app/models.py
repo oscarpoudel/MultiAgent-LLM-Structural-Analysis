@@ -15,6 +15,8 @@ class AnalyzeRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1)
+    analysis_type: str | None = None
+    model: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -154,9 +156,22 @@ class AnalyzeResponse(BaseModel):
     diagrams: DiagramData | None = None
 
 
+class CanvasAction(BaseModel):
+    action: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
+class CanvasToolDecision(BaseModel):
+    action: str = "none"
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    message: str = ""
+    confidence: float = 0.0
+
+
 class ChatResponse(BaseModel):
     status: str
     response_type: str
     message: str
     source: str
     analysis: AnalyzeResponse | None = None
+    canvas_action: CanvasAction | None = None

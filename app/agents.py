@@ -18,6 +18,7 @@ from app.models import (
     FrameMember,
     FrameMemberLoad,
     FrameNode,
+    CanvasToolDecision,
     PointLoad,
     TrussInputs,
     TrussLoad,
@@ -140,6 +141,19 @@ class StructuralAgentSystem:
                     "required_inputs": ["span_m", "udl_kn_per_m", "elastic_modulus_gpa", "inertia_m4"],
                 },
             ),
+            "canvas_router": ManagedAgent(
+                name="Canvas Tool Router Agent",
+                instructions=(
+                    "You route user chat to canvas tools. Return compact JSON only with keys: "
+                    "action, arguments, message, confidence. Available actions: none, clear_canvas, "
+                    "draw_simple_beam. Use none for ordinary conversation or conceptual questions. "
+                    "Use clear_canvas only when the user wants the drawing/canvas/model cleared or reset. "
+                    "Use draw_simple_beam when the user asks to draw/create a simply supported beam. "
+                    "For draw_simple_beam arguments use: span_m number, udl_kn_per_m number if present, "
+                    "point_loads array of {magnitude_kn, position_m}. Convert midpoint/middle to span_m/2."
+                ),
+                fallback={"action": "none", "arguments": {}, "message": "", "confidence": 0.0},
+            ),
         }
 
     def chat(self, message: str) -> ConversationResult:
@@ -154,6 +168,63 @@ class StructuralAgentSystem:
             return ConversationResult(message=response or agent.fallback["summary"], source="llm")
         except Exception:
             return ConversationResult(message=agent.fallback["summary"], source="fallback")
+
+    def route_canvas_tool(self, message: str) -> tuple[CanvasToolDecision, str]:
+        agent = self.managed_agents["canvas_router"]
+        fallback = self._fallback_canvas_tool_decision(message)
+        task = (
+            f"User message:\n{message}\n\n"
+            "Return JSON for the best canvas tool decision. Do not include markdown."
+        )
+        try:
+            raw = self._generate_with_timeout(agent.instructions, task)
+            match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
+            if not match:
+                return fallback, "fallback"
+            decision = CanvasToolDecision.model_validate(json.loads(match.group(0)))
+            if decision.action not in {"none", "clear_canvas", "draw_simple_beam"}:
+                return fallback, "fallback"
+            return decision, "llm"
+        except Exception:
+            return fallback, "fallback"
+
+    def _fallback_canvas_tool_decision(self, message: str) -> CanvasToolDecision:
+        text = " ".join(message.lower().strip().split())
+        question_starts = ("how ", "what ", "why ", "when ", "where ", "can you explain", "tell me")
+        if text.startswith(question_starts):
+            return CanvasToolDecision()
+
+        clear_phrases = [
+            "clear screen", "clear the screen", "clear canvas", "clear the canvas",
+            "make canvas empty", "make the canvas empty", "empty canvas", "empty the canvas",
+            "reset canvas", "reset the canvas", "delete drawing", "delete the drawing",
+            "erase drawing", "erase the drawing", "remove drawing", "remove the drawing",
+            "start over", "new drawing", "new model",
+        ]
+        if any(phrase in text for phrase in clear_phrases):
+            return CanvasToolDecision(
+                action="clear_canvas",
+                message="I cleared the drawing canvas.",
+                confidence=0.9,
+            )
+
+        draw_terms = ("draw", "create", "make", "model", "sketch")
+        if "beam" in text and any(term in text for term in draw_terms):
+            span = self._find_number(text, [r"(?:span|length)(?: is| of)?\s*([0-9.]+)\s*m", r"([0-9.]+)\s*m"], 2.0)
+            point_loads = []
+            for match in re.finditer(r"([0-9.]+)\s*kn(?:\s+point load|\s+load)?(?:\s+at\s+([0-9.]+)\s*m|\s+at\s+(?:midspan|middle|center|centre))?", text):
+                magnitude = float(match.group(1))
+                position = float(match.group(2)) if match.group(2) else span / 2
+                point_loads.append({"magnitude_kn": magnitude, "position_m": position})
+            udl = self._find_number(text, [r"(?:udl|uniform load|distributed load)\s*(?:of|is)?\s*([0-9.]+)\s*kn/?m", r"([0-9.]+)\s*kn/?m"], 0.0)
+            return CanvasToolDecision(
+                action="draw_simple_beam",
+                arguments={"span_m": span, "udl_kn_per_m": udl, "point_loads": point_loads},
+                message="I drew a simply supported beam on the canvas.",
+                confidence=0.8,
+            )
+
+        return CanvasToolDecision()
 
     def analyze(self, prompt: str) -> AgentResult:
         traces: list[AgentTrace] = []
