@@ -428,6 +428,39 @@ def test_slab_loads_route_rejects_invalid() -> None:
     assert response.get_json()["status"] == "error"
 
 
+def test_beam_selection_route_returns_results() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/design/beam",
+        json={"moment_kn_m": 100.0, "shear_kn": 50.0, "unbraced_length_m": 0.0},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["results"]["selected"] is not None
+    assert data["results"]["selected"]["flex_util"] <= 1.0
+
+
+def test_column_selection_route_returns_results() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/design/column",
+        json={"axial_load_kn": 1000.0, "kl_m": 4.0},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["results"]["selected"] is not None
+    assert data["results"]["selected"]["util"] <= 1.0
+
+
+def test_beam_selection_route_rejects_invalid() -> None:
+    client = app.test_client()
+    response = client.post("/api/design/beam", json={"moment_kn_m": -1.0})
+    assert response.status_code == 400
+    assert response.get_json()["status"] == "error"
+
+
 def test_export_report_regenerates_stale_3d_beam_template() -> None:
     client = app.test_client()
     stale_report = """# Preliminary Structural Analysis Report

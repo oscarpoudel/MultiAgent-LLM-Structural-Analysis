@@ -246,6 +246,24 @@ class SlabInputs(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Section selection inputs (AISC 360)
+# ---------------------------------------------------------------------------
+
+class BeamSelectionInputs(BaseModel):
+    moment_kn_m: float = Field(..., gt=0, description="Factored bending moment Mu (kN-m)")
+    shear_kn: float = Field(0.0, ge=0, description="Factored shear Vu (kN)")
+    unbraced_length_m: float = Field(0.0, ge=0, description="Unbraced length Lb (m); 0 = fully braced")
+    cb: float = Field(1.0, ge=1.0, le=3.0, description="Lateral-torsional buckling modification Cb")
+    fy_mpa: float = Field(345.0, gt=0, description="Yield stress fy (MPa)")
+
+
+class ColumnSelectionInputs(BaseModel):
+    axial_load_kn: float = Field(..., gt=0, description="Factored axial load Pu (kN)")
+    kl_m: float = Field(..., gt=0, description="Effective length KL (m)")
+    fy_mpa: float = Field(345.0, gt=0, description="Yield stress fy (MPa)")
+
+
+# ---------------------------------------------------------------------------
 # Agent trace / responses
 # ---------------------------------------------------------------------------
 

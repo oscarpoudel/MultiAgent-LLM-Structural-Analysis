@@ -292,6 +292,7 @@ def create_app() -> Flask:
 
     # Register blueprints
     from app.routes.analyze import bp as analyze_bp
+    from app.routes.design import bp as design_bp
     from app.routes.history import bp as history_bp
     from app.routes.loads import bp as loads_bp
     from app.routes.pages import bp as pages_bp
@@ -299,6 +300,7 @@ def create_app() -> Flask:
     from app.routes.sections import bp as sections_bp
 
     app.register_blueprint(analyze_bp)
+    app.register_blueprint(design_bp)
     app.register_blueprint(history_bp)
     app.register_blueprint(loads_bp)
     app.register_blueprint(sections_bp)
