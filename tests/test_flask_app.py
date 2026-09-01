@@ -402,6 +402,32 @@ def test_seismic_loads_route_rejects_invalid() -> None:
     assert response.get_json()["status"] == "error"
 
 
+def test_slab_loads_route_returns_results() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/loads/slab",
+        json={
+            "span_x_m": 4.0,
+            "span_y_m": 4.0,
+            "thickness_m": 0.18,
+            "dead_load_kpa": 2.0,
+            "live_load_kpa": 3.0,
+        },
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["results"]["design_moments_kn_m"]["short_span"] > 0
+    assert data["results"]["reinforcement_short_span"]["required_as_m2"] > 0
+
+
+def test_slab_loads_route_rejects_invalid() -> None:
+    client = app.test_client()
+    response = client.post("/api/loads/slab", json={"span_x_m": -1.0, "live_load_kpa": 3.0})
+    assert response.status_code == 400
+    assert response.get_json()["status"] == "error"
+
+
 def test_export_report_regenerates_stale_3d_beam_template() -> None:
     client = app.test_client()
     stale_report = """# Preliminary Structural Analysis Report

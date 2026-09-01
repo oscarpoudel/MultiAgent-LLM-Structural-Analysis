@@ -1,6 +1,7 @@
 """Tests for ASCE 7-22 wind and seismic load determination tools."""
-from app.models import SeismicInputs, WindInputs
+from app.models import SeismicInputs, SlabInputs, WindInputs
 from app.tools.seismic import _interp, calculate_seismic_base_shear
+from app.tools.slab import _interp_coeff, calculate_slab
 from app.tools.wind import (
     _leeward_cp,
     _roof_cp,
@@ -204,3 +205,82 @@ class TestSeismicBaseShear:
         )
         # Lower R means higher Cs and higher base shear
         assert bf["base_shear_kn"] > mf["base_shear_kn"]
+
+
+class TestSlabInterp:
+    def test_square_slab(self) -> None:
+        assert _interp_coeff(1.0, [(1.0, 0.033), (2.0, 0.043)]) == 0.033
+
+    def test_midpoint(self) -> None:
+        assert _interp_coeff(1.5, [(1.0, 0.033), (2.0, 0.043)]) == 0.038
+
+    def test_clamp_high(self) -> None:
+        assert _interp_coeff(10.0, [(1.0, 0.033), (2.0, 0.043)]) == 0.043
+
+
+class TestSlabAnalysis:
+    def test_square_continuous_slab(self) -> None:
+        result = calculate_slab(
+            SlabInputs(
+                span_x_m=4.0,
+                span_y_m=4.0,
+                thickness_m=0.18,
+                dead_load_kpa=2.0,
+                live_load_kpa=3.0,
+            )
+        )
+        assert result["method"].startswith("ACI 318")
+        assert result["span_ratio"] == 1.0
+        assert result["two_way_action"] is True
+        assert result["factored_load_kpa"] > 0
+        assert result["design_moments_kn_m"]["short_span"] > 0
+        assert result["reinforcement_short_span"]["required_as_m2"] > 0
+        assert result["deflection"]["estimated_mm"] > 0
+
+    def test_thin_slab_warns(self) -> None:
+        result = calculate_slab(
+            SlabInputs(span_x_m=6.0, span_y_m=6.0, thickness_m=0.10, live_load_kpa=3.0)
+        )
+        assert result["thickness_ok"] is False
+        assert any("minimum" in w.lower() for w in result["warnings"])
+
+    def test_thick_slab_ok(self) -> None:
+        result = calculate_slab(
+            SlabInputs(span_x_m=4.0, span_y_m=4.0, thickness_m=0.25, live_load_kpa=3.0)
+        )
+        assert result["thickness_ok"] is True
+
+    def test_higher_load_higher_moment(self) -> None:
+        low = calculate_slab(SlabInputs(span_x_m=4.0, span_y_m=4.0, thickness_m=0.18, live_load_kpa=2.0))
+        high = calculate_slab(SlabInputs(span_x_m=4.0, span_y_m=4.0, thickness_m=0.18, live_load_kpa=5.0))
+        assert high["design_moments_kn_m"]["short_span"] > low["design_moments_kn_m"]["short_span"]
+
+    def test_longer_span_higher_moment(self) -> None:
+        short = calculate_slab(SlabInputs(span_x_m=3.0, span_y_m=3.0, thickness_m=0.18, live_load_kpa=3.0))
+        long_ = calculate_slab(SlabInputs(span_x_m=5.0, span_y_m=5.0, thickness_m=0.25, live_load_kpa=3.0))
+        assert long_["design_moments_kn_m"]["short_span"] > short["design_moments_kn_m"]["short_span"]
+
+    def test_one_way_warning(self) -> None:
+        result = calculate_slab(
+            SlabInputs(span_x_m=2.0, span_y_m=6.0, thickness_m=0.18, live_load_kpa=3.0)
+        )
+        assert result["two_way_action"] is False
+        assert any("one-way" in w.lower() for w in result["warnings"])
+
+    def test_reinforcement_spacing_bounded(self) -> None:
+        result = calculate_slab(
+            SlabInputs(span_x_m=4.0, span_y_m=4.0, thickness_m=0.20, live_load_kpa=3.0)
+        )
+        sx = result["reinforcement_short_span"]["suggested_spacing_mm"]
+        assert 0.0 < sx <= 300.0
+
+    def test_higher_fy_less_reinforcement(self) -> None:
+        low = calculate_slab(SlabInputs(span_x_m=4.0, span_y_m=4.0, thickness_m=0.18, live_load_kpa=25.0, steel_fy_mpa=420.0))
+        high = calculate_slab(SlabInputs(span_x_m=4.0, span_y_m=4.0, thickness_m=0.18, live_load_kpa=25.0, steel_fy_mpa=600.0))
+        assert high["reinforcement_short_span"]["required_as_m2"] < low["reinforcement_short_span"]["required_as_m2"]
+
+    def test_deflection_ok_flag(self) -> None:
+        result = calculate_slab(
+            SlabInputs(span_x_m=4.0, span_y_m=4.0, thickness_m=0.25, live_load_kpa=2.0)
+        )
+        assert isinstance(result["deflection"]["ok"], bool)
