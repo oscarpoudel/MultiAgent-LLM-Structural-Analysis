@@ -4,7 +4,6 @@ import math
 
 from app.models import ColumnInputs
 
-
 # Effective length factors (K) for different end conditions
 EFFECTIVE_LENGTH_FACTORS = {
     "pinned_pinned": 1.0,

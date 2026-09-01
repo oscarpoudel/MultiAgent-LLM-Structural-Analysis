@@ -12,7 +12,6 @@ if str(ROOT) not in sys.path:
 
 from app.main import app, get_agent_system  # noqa: E402
 
-
 DEFAULT_CANVAS_MODEL = {
     "nodes": [
         {"id": 1, "x": 0.0, "y": 0.0, "support": "pin"},

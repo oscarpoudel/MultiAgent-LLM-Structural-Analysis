@@ -8,13 +8,16 @@ from pathlib import Path
 
 from flask import Flask
 
+from app.agents import StructuralAgentSystem
 from app.config import get_settings
 from app.llm import DisabledLLMClient, OllamaClient, PydanticAIClient
 from app.logging_config import configure_logging, get_logger
 from app.models import (
-    AnalyzeResponse, TrussInputs, FrameInputs, Structure3DInputs,
+    AnalyzeResponse,
+    FrameInputs,
+    Structure3DInputs,
+    TrussInputs,
 )
-from app.agents import StructuralAgentSystem
 from app.tools.report import format_engineering_report
 
 configure_logging()
@@ -290,9 +293,9 @@ def create_app() -> Flask:
     # Register blueprints
     from app.routes.analyze import bp as analyze_bp
     from app.routes.history import bp as history_bp
-    from app.routes.sections import bp as sections_bp
     from app.routes.pages import bp as pages_bp
     from app.routes.projects import bp as projects_bp
+    from app.routes.sections import bp as sections_bp
 
     app.register_blueprint(analyze_bp)
     app.register_blueprint(history_bp)

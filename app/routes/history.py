@@ -5,7 +5,7 @@ import csv
 import io
 import json
 
-from flask import Blueprint, jsonify, request, Response
+from flask import Blueprint, Response, jsonify, request
 
 from app.logging_config import get_logger
 from app.tools.report import format_engineering_report

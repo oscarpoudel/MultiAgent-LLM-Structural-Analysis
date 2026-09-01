@@ -1,4 +1,5 @@
 .env
+.opencode/
 .env.*
 !.env.example
 
@@ -44,3 +45,6 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+
+# Stray console output artifacts
+3.7

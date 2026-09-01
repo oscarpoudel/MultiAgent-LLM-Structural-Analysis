@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -145,15 +145,15 @@ def apply_load_combination(
             "sl_kn": sl_kn,
             "el_kn": el_kn,
         }
-    
+
     factored_dl = dl_kn * combination.dl_factor
     factored_ll = ll_kn * combination.ll_factor
     factored_wl = wl_kn * combination.wl_factor
     factored_sl = sl_kn * combination.sl_factor
     factored_el = el_kn * combination.el_factor
-    
+
     factored_total = factored_dl + factored_ll + factored_wl + factored_sl + factored_el
-    
+
     return {
         "factored_load_kn": round(factored_total, 4),
         "combination": combination.name,
@@ -188,7 +188,7 @@ def run_all_load_combinations(
         List of combination results with factored loads.
     """
     combinations = ASCE7_LRFD_COMBINATIONS if method == "lrfd" else ASCE7_ASD_COMBINATIONS
-    
+
     results = []
     for combo in combinations:
         result = apply_load_combination(
@@ -200,7 +200,7 @@ def run_all_load_combinations(
             combination=combo,
         )
         results.append(result)
-    
+
     return results
 
 
@@ -235,13 +235,13 @@ def get_controlling_combination(
         el_kn=el_kn,
         method=method,
     )
-    
+
     if not all_combos:
         return {"factored_load_kn": 0.0, "combination": "none", "description": "No combinations"}
-    
+
     if maximize:
         controlling = max(all_combos, key=lambda x: abs(x["factored_load_kn"]))
     else:
         controlling = max(all_combos, key=lambda x: x["factored_load_kn"])
-    
+
     return controlling

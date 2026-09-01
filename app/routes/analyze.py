@@ -6,10 +6,15 @@ from pydantic import ValidationError
 
 from app.logging_config import get_logger
 from app.models import (
-    AnalyzeRequest, AnalyzeResponse, ChatRequest, ChatResponse,
-    TrussInputs, FrameInputs, CanvasAction, EvaluateRequest,
+    AnalyzeRequest,
+    AnalyzeResponse,
+    CanvasAction,
+    ChatRequest,
+    ChatResponse,
+    FrameInputs,
+    TrussInputs,
 )
-from app.tools.load_combinations import run_all_load_combinations, get_controlling_combination
+from app.tools.load_combinations import get_controlling_combination, run_all_load_combinations
 
 bp = Blueprint("analyze", __name__)
 log = get_logger(__name__)

@@ -1,6 +1,6 @@
-from app.models import Load3D, LoadCombination3D, MemberLoad3D, Node3D, Structure3DInputs
 import builtins
 
+from app.models import Load3D, LoadCombination3D, MemberLoad3D, Node3D, Structure3DInputs
 from app.tools.opensees_3d import (
     _apply_rigid_diaphragms,
     _default_combinations,
@@ -106,7 +106,7 @@ def test_apply_rigid_diaphragms_skips_base_and_uses_nearest_centroid_master() ->
         def __init__(self):
             self.calls = []
 
-        def rigidDiaphragm(self, direction, master, *slaves):
+        def rigidDiaphragm(self, direction, master, *slaves):  # noqa: N802 - mirrors OpenSeesPy API method name
             self.calls.append((direction, master, slaves))
 
     ops = FakeOps()

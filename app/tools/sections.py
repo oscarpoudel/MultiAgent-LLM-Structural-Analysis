@@ -247,7 +247,7 @@ _add_angle("L203X203X25", 74.8, 95.3, 203, 203, 25, 3360, 3360, 236, 236, 5.94, 
 
 def get_section(name: str) -> SteelSection | None:
     """Look up a section by name (case-insensitive). Searches W, HSS, and Angle sections."""
-    key = name.upper().replace(" ", "").replace("×", "X")
+    key = name.upper().replace(" ", "").replace("\u00d7", "X")
     return _W_SHAPES.get(key) or _HSS_SECTIONS.get(key) or _ANGLE_SECTIONS.get(key)
 
 
@@ -266,7 +266,7 @@ def list_sections(section_type: str = "all") -> list[str]:
 
 def search_sections(query: str) -> list[SteelSection]:
     """Search sections by partial name match."""
-    query = query.upper().replace(" ", "").replace("×", "X")
+    query = query.upper().replace(" ", "").replace("\u00d7", "X")
     results = []
     for db in (_W_SHAPES, _HSS_SECTIONS, _ANGLE_SECTIONS):
         for name, section in db.items():

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from itertools import pairwise
+
 from app.models import Structure3DInputs
 
 
@@ -40,7 +42,7 @@ def _story_response(inputs: Structure3DInputs, nodal_displacements: dict[int, li
         nodes_by_elevation[elevation] = nodes_at_level
         ux_values = [nodal_displacements[node.id][0] for node in nodes_at_level if node.id in nodal_displacements]
         uy_values = [nodal_displacements[node.id][1] for node in nodes_at_level if node.id in nodal_displacements]
-        resultant_values = [(ux * ux + uy * uy) ** 0.5 for ux, uy in zip(ux_values, uy_values)]
+        resultant_values = [(ux * ux + uy * uy) ** 0.5 for ux, uy in zip(ux_values, uy_values, strict=True)]
         levels.append({
             "elevation_m": elevation,
             "avg_ux_mm": sum(ux_values) / len(ux_values) if ux_values else 0.0,
@@ -51,7 +53,7 @@ def _story_response(inputs: Structure3DInputs, nodal_displacements: dict[int, li
         })
 
     story_drifts = []
-    for lower, upper in zip(levels, levels[1:]):
+    for lower, upper in pairwise(levels):
         height = upper["elevation_m"] - lower["elevation_m"]
         paired_drifts = []
         lower_nodes_by_xy = {

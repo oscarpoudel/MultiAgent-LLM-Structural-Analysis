@@ -24,6 +24,7 @@ dependencies = [
 dev = [
     "pytest==8.3.4",
     "pytest-cov==6.0.0",
+    "pytest-env==1.7.0",
     "ruff>=0.4.4",
     "pre-commit>=3.7",
 ]
@@ -66,6 +67,7 @@ select = [
 ]
 ignore = [
     "E501",   # line too long (handled by formatter)
+    "E741",   # ambiguous name I (engineering notation: I=inertia, E=modulus, A=area, K=factor)
     "B008",   # do not perform function calls in default args
     "N806",   # variable in function should be lowercase (common in engineering code: E, I, A, K)
     "N803",   # argument name should be lowercase

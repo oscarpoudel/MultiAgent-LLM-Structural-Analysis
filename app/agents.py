@@ -13,30 +13,28 @@ from app.logging_config import get_logger
 from app.models import (
     AgentTrace,
     BeamInputs,
+    CanvasToolDecision,
     ColumnInputs,
     FrameInputs,
     FrameLoad,
     FrameMember,
     FrameMemberLoad,
     FrameNode,
-    CanvasToolDecision,
+    Load3D,
+    Member3D,
+    Node3D,
     PointLoad,
+    Structure3DInputs,
+    Support3D,
     TrussInputs,
     TrussLoad,
     TrussMember,
     TrussNode,
-    Structure3DInputs,
-    Node3D,
-    Member3D,
-    Load3D,
-    MemberLoad3D,
-    Support3D,
 )
-from app.tools.beam import analyze_beam
 from app.tools.column import analyze_column
 from app.tools.frame import analyze_frame
-from app.tools.opensees_beam import analyze_beam_opensees
 from app.tools.opensees_3d import analyze_3d_structure_opensees
+from app.tools.opensees_beam import analyze_beam_opensees
 from app.tools.report import format_engineering_report
 from app.tools.truss import analyze_truss
 
@@ -802,7 +800,7 @@ class StructuralAgentSystem:
                 return Structure3DInputs.model_validate(data)
             except (json.JSONDecodeError, ValidationError):
                 pass
-        
+
         # Default simple 3D cantilever column if couldn't parse
         nodes = [
             Node3D(id=1, x=0.0, y=0.0, z=0.0, support=Support3D(ux=True, uy=True, uz=True, rx=True, ry=True, rz=True)),
@@ -814,7 +812,7 @@ class StructuralAgentSystem:
         nodal_loads = [
             Load3D(node_id=2, fx_kn=10.0, fy_kn=-50.0, fz_kn=5.0)
         ]
-        
+
         return Structure3DInputs(nodes=nodes, members=members, nodal_loads=nodal_loads)
 
     # ------------------------------------------------------------------
