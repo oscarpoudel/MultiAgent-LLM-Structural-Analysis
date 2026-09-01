@@ -196,6 +196,56 @@ class Structure3DInputs(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Wind inputs (ASCE 7-22 simplified procedure)
+# ---------------------------------------------------------------------------
+
+class WindInputs(BaseModel):
+    basic_wind_speed_ms: float = Field(..., gt=0, description="Basic wind speed V (m/s), 3-sec gust, 1 yr recurrence")
+    exposure: str = "C"  # A | B | C | D (ASCE 7-22 Table 26.11-1)
+    height_m: float = Field(..., gt=0, description="Building height h (m)")
+    length_m: float = Field(..., gt=0, description="Building length in wind direction (m)")
+    width_m: float = Field(..., gt=0, description="Building width perpendicular to wind (m)")
+    story_height_m: float = Field(4.0, gt=0, description="Average story height for story-force distribution (m)")
+    internal_pressure: str = "minor_openings"  # no_openings | minor_openings | major_openings | all_openings
+    topographic_factor: float = Field(1.0, ge=1.0, le=2.0, description="Topographic factor Kzt")
+    air_density_factor: float = Field(1.0, ge=0.5, le=1.5, description="Air density factor Ke")
+
+
+# ---------------------------------------------------------------------------
+# Seismic inputs (ASCE 7-22 equivalent static force procedure)
+# ---------------------------------------------------------------------------
+
+class SeismicInputs(BaseModel):
+    spectral_accel_sd: float = Field(..., gt=0, description="Mapped spectral acceleration at short period Sa(0.2s) (g)")
+    spectral_accel_1s: float = Field(..., gt=0, description="Mapped spectral acceleration at 1s Sa(1s) (g)")
+    site_class: str = "D"  # A | B | C | D | E | F (ASCE 7-22 Table 11.3-1)
+    risk_category: str = "II"  # I | II | III | IV
+    building_weight_kn: float = Field(..., gt=0, description="Seismic weight W (kN)")
+    fundamental_period_s: float | None = Field(None, gt=0, description="Fundamental period T (s); if None, use Ca*Tu")
+    height_m: float = Field(..., gt=0, description="Effective height for period estimate (m)")
+    structural_system: str = "moment_frame"  # moment_frame | braced_frame | shear_wall | dual_system
+    importance_factor: float | None = None  # Rho override; default from risk_category
+    response_modification: float | None = None  # R override; default from structural_system
+    deflection_amplifier: float | None = None  # Cd override; default from structural_system
+
+
+# ---------------------------------------------------------------------------
+# Slab inputs (two-way slab, ACI 318)
+# ---------------------------------------------------------------------------
+
+class SlabInputs(BaseModel):
+    span_x_m: float = Field(..., gt=0, description="Span in X direction (clear, m)")
+    span_y_m: float = Field(..., gt=0, description="Span in Y direction (clear, m)")
+    thickness_m: float = Field(..., gt=0, description="Slab thickness h (m)")
+    dead_load_kpa: float = Field(0.0, ge=0, description="Superimposed dead load (kPa)")
+    live_load_kpa: float = Field(..., gt=0, description="Live load (kPa)")
+    concrete_fck_mpa: float = Field(25.0, gt=0, description="Specified compressive strength f'c (MPa)")
+    steel_fy_mpa: float = Field(420.0, gt=0, description="Yield strength of reinforcement fy (MPa)")
+    support_condition: str = "continuous"  # simply_supported | continuous
+    deflection_limit_ratio: float = 360.0
+
+
+# ---------------------------------------------------------------------------
 # Agent trace / responses
 # ---------------------------------------------------------------------------
 

@@ -349,6 +349,59 @@ def test_export_report_appends_detailed_results_json() -> None:
     assert '"Fx_kn": 1.5' in body
 
 
+def test_wind_loads_route_returns_results() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/loads/wind",
+        json={
+            "basic_wind_speed_ms": 30.0,
+            "exposure": "C",
+            "height_m": 12.0,
+            "length_m": 20.0,
+            "width_m": 10.0,
+        },
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["results"]["base_shear_x_kn"] > 0
+    assert data["results"]["base_shear_y_kn"] > 0
+
+
+def test_wind_loads_route_rejects_invalid() -> None:
+    client = app.test_client()
+    response = client.post("/api/loads/wind", json={"basic_wind_speed_ms": -5.0})
+    assert response.status_code == 400
+    assert response.get_json()["status"] == "error"
+
+
+def test_seismic_loads_route_returns_results() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/loads/seismic",
+        json={
+            "spectral_accel_sd": 0.8,
+            "spectral_accel_1s": 0.4,
+            "site_class": "D",
+            "risk_category": "II",
+            "building_weight_kn": 10000.0,
+            "height_m": 12.0,
+        },
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["results"]["base_shear_kn"] > 0
+    assert data["results"]["design_params"]["cs"] > 0
+
+
+def test_seismic_loads_route_rejects_invalid() -> None:
+    client = app.test_client()
+    response = client.post("/api/loads/seismic", json={"spectral_accel_sd": 0.0})
+    assert response.status_code == 400
+    assert response.get_json()["status"] == "error"
+
+
 def test_export_report_regenerates_stale_3d_beam_template() -> None:
     client = app.test_client()
     stale_report = """# Preliminary Structural Analysis Report

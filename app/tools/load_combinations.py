@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass
 
@@ -131,7 +131,7 @@ def apply_load_combination(
     combination: LoadCombination | None = None,
 ) -> dict:
     """Apply a load combination to individual load components.
-    
+
     Returns the factored load and combination details.
     """
     if combination is None:
@@ -175,7 +175,7 @@ def run_all_load_combinations(
     method: str = "lrfd",
 ) -> list[dict]:
     """Run all load combinations for given load components.
-    
+
     Args:
         dl_kn: Dead load (kN)
         ll_kn: Live load (kN)
@@ -183,7 +183,7 @@ def run_all_load_combinations(
         sl_kn: Snow load (kN)
         el_kn: Earthquake load (kN)
         method: 'lrfd' or 'asd'
-    
+
     Returns:
         List of combination results with factored loads.
     """
@@ -214,7 +214,7 @@ def get_controlling_combination(
     maximize: bool = True,
 ) -> dict:
     """Find the controlling (maximum absolute) load combination.
-    
+
     Args:
         dl_kn: Dead load (kN)
         ll_kn: Live load (kN)
@@ -223,7 +223,7 @@ def get_controlling_combination(
         el_kn: Earthquake load (kN)
         method: 'lrfd' or 'asd'
         maximize: If True, find maximum absolute value. If False, find maximum positive value.
-    
+
     Returns:
         The controlling combination result.
     """
