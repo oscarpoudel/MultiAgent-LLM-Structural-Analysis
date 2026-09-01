@@ -4,9 +4,10 @@ from __future__ import annotations
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
-from app.models import SeismicInputs, SlabInputs, WindInputs
+from app.models import SeismicInputs, SlabInputs, SnowInputs, WindInputs
 from app.tools.seismic import calculate_seismic_base_shear
 from app.tools.slab import calculate_slab
+from app.tools.snow import calculate_snow_loads
 from app.tools.wind import calculate_wind_loads
 
 bp = Blueprint("loads", __name__)
@@ -42,4 +43,15 @@ def slab_loads():
     except ValidationError as exc:
         return jsonify({"status": "error", "message": "Invalid slab inputs", "details": exc.errors()}), 400
     result = calculate_slab(inputs)
+    return jsonify({"status": "ok", "results": result})
+
+
+@bp.post("/api/loads/snow")
+def snow_loads():
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        inputs = SnowInputs.model_validate(data)
+    except ValidationError as exc:
+        return jsonify({"status": "error", "message": "Invalid snow inputs", "details": exc.errors()}), 400
+    result = calculate_snow_loads(inputs)
     return jsonify({"status": "ok", "results": result})

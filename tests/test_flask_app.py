@@ -428,6 +428,25 @@ def test_slab_loads_route_rejects_invalid() -> None:
     assert response.get_json()["status"] == "error"
 
 
+def test_snow_loads_route_returns_results() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/loads/snow",
+        json={"ground_snow_load_kpa": 3.0, "roof_slope_deg": 0.0},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["results"]["flat_roof_ps_kpa"] > 0
+
+
+def test_snow_loads_route_rejects_invalid() -> None:
+    client = app.test_client()
+    response = client.post("/api/loads/snow", json={"ground_snow_load_kpa": -1.0})
+    assert response.status_code == 400
+    assert response.get_json()["status"] == "error"
+
+
 def test_beam_selection_route_returns_results() -> None:
     client = app.test_client()
     response = client.post(

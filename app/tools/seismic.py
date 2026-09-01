@@ -18,6 +18,8 @@ Procedure:
 """
 from __future__ import annotations
 
+import math
+
 from app.models import SeismicInputs
 
 # Site coefficients Fa (ASCE 7-22 Table 11.4-1)
@@ -104,7 +106,6 @@ def calculate_seismic_base_shear(inputs: SeismicInputs) -> dict:
         period_method = "user_provided"
     else:
         # Tu = 0.09 * Ts * sqrt(h_roof / SDS)  (SI, Eq. 12.8-1)
-        import math
         tu = 0.09 * ts * math.sqrt(inputs.height_m / sds) if sds > 0 else 0.0
         # Ca = SDS / (1 + (7T/Ts - 1)) for T >= Ts else SDS
         if ts > 0 and tu >= ts:

@@ -1,7 +1,8 @@
 """Tests for ASCE 7-22 wind and seismic load determination tools."""
-from app.models import SeismicInputs, SlabInputs, WindInputs
+from app.models import SeismicInputs, SlabInputs, SnowInputs, WindInputs
 from app.tools.seismic import _interp, calculate_seismic_base_shear
 from app.tools.slab import _interp_coeff, calculate_slab
+from app.tools.snow import calculate_snow_loads
 from app.tools.wind import (
     _leeward_cp,
     _roof_cp,
@@ -284,3 +285,50 @@ class TestSlabAnalysis:
             SlabInputs(span_x_m=4.0, span_y_m=4.0, thickness_m=0.25, live_load_kpa=2.0)
         )
         assert isinstance(result["deflection"]["ok"], bool)
+
+
+class TestSnowLoads:
+    def test_flat_roof(self) -> None:
+        result = calculate_snow_loads(
+            SnowInputs(ground_snow_load_kpa=3.0, roof_slope_deg=0.0)
+        )
+        assert result["method"].startswith("ASCE 7-22")
+        # ps = 0.7 * 1.0 * 1.0 * 0.8 * 3.0 = 1.68
+        assert abs(result["flat_roof_ps_kpa"] - 1.68) < 1e-6
+        assert result["balanced_snow_kpa"] > 0
+        assert result["total_design_snow_kpa"] >= result["balanced_snow_kpa"]
+
+    def test_steeper_slope_higher_per_area_load(self) -> None:
+        # Cs = 0.5/cos^2(theta) increases with slope (projected-area effect)
+        shallow = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=3.0, roof_slope_deg=10.0))
+        steep = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=3.0, roof_slope_deg=45.0))
+        assert steep["sloped_roof_ps_kpa"] > shallow["sloped_roof_ps_kpa"]
+
+    def test_flat_roof_balanced_equals_ps(self) -> None:
+        result = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=3.0, roof_slope_deg=0.0))
+        # Cs=0.5 at 0 deg, so ps_sloped = 0.5*ps < ps; balanced = ps
+        assert result["balanced_snow_kpa"] == result["flat_roof_ps_kpa"]
+
+    def test_exposed_higher_than_shielded(self) -> None:
+        exposed = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=3.0, exposure="exposed"))
+        shielded = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=3.0, exposure="shielded"))
+        assert exposed["flat_roof_ps_kpa"] > shielded["flat_roof_ps_kpa"]
+
+    def test_unheated_higher_than_heated(self) -> None:
+        unheated = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=3.0, thermal="unheated"))
+        heated = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=3.0, thermal="heated"))
+        assert unheated["flat_roof_ps_kpa"] > heated["flat_roof_ps_kpa"]
+
+    def test_drift_increases_total(self) -> None:
+        no_drift = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=3.0, drift=False))
+        with_drift = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=3.0, drift=True))
+        assert with_drift["total_design_snow_kpa"] > no_drift["total_design_snow_kpa"]
+
+    def test_risk_category_iii_higher(self) -> None:
+        cat2 = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=3.0, risk_category="II"))
+        cat3 = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=3.0, risk_category="III"))
+        assert cat3["flat_roof_ps_kpa"] > cat2["flat_roof_ps_kpa"]
+
+    def test_zero_snow(self) -> None:
+        result = calculate_snow_loads(SnowInputs(ground_snow_load_kpa=0.0))
+        assert result["total_design_snow_kpa"] == 0.0

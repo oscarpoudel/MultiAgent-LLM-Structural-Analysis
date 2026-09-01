@@ -246,6 +246,19 @@ class SlabInputs(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Snow inputs (ASCE 7-22)
+# ---------------------------------------------------------------------------
+
+class SnowInputs(BaseModel):
+    ground_snow_load_kpa: float = Field(..., ge=0, description="Ground snow load pg (kPa)")
+    exposure: str = "partially_shielded"  # exposed | partially_shielded | shielded
+    thermal: str = "heated"  # heated | unheated
+    risk_category: str = "II"  # I | II | III | IV
+    roof_slope_deg: float = Field(0.0, ge=0, le=90, description="Roof slope from horizontal (deg)")
+    drift: bool = Field(False, description="Include simplified drift load")
+
+
+# ---------------------------------------------------------------------------
 # Section selection inputs (AISC 360)
 # ---------------------------------------------------------------------------
 
