@@ -376,14 +376,49 @@
 <main id="tab-sections" class="page hidden">
   <div class="sec-layout">
     <div class="sec-head glass">
-      <h2>Steel Section Library</h2>
-      <div class="sec-row">
+      <h2>Steel Sections</h2>
+      <div class="sec-subtabs">
+        <button class="sec-subtab active" data-sectab="library">Library</button>
+        <button class="sec-subtab" data-sectab="select">Section Selection</button>
+      </div>
+      <div class="sec-row" data-secrow="library">
         <select id="secType"><option value="all">All</option><option value="w">W-Shapes</option><option value="hss">HSS</option><option value="l">Angles</option></select>
         <input id="secQ" placeholder="e.g. W310" />
         <button id="secSearch" class="btn-xs">Search</button>
       </div>
+      <div class="sec-row hidden" data-secrow="select">
+        <button class="sec-subtab active" data-selkind="beam">Beam (Mu, Vu, Lb)</button>
+        <button class="sec-subtab" data-selkind="column">Column (Pu, KL)</button>
+      </div>
     </div>
-    <div id="secResults" class="sec-results glass"><p class="placeholder">Search for a section.</p></div>
+
+    <div class="sec-body">
+      <!-- SELECTION FORMS -->
+      <div id="secSelectForms" class="sec-select-forms glass hidden">
+        <form id="beamSelForm" class="sec-sel-form" data-selform="beam">
+          <h3>Beam (AISC 360 F, V)</h3>
+          <div class="loads-grid">
+            <label>Mu (kN-m)<input type="number" id="beamMu" value="150" step="1" min="1"/></label>
+            <label>Vu (kN)<input type="number" id="beamVu" value="80" step="1" min="0"/></label>
+            <label>Lb (m)<input type="number" id="beamLb" value="3" step="0.5" min="0"/></label>
+            <label>Cb<input type="number" id="beamCb" value="1.0" step="0.1" min="1" max="3"/></label>
+            <label>fy (MPa)<input type="number" id="beamFy" value="345" step="5" min="1"/></label>
+          </div>
+          <button type="submit" class="btn-primary">Select Beam</button>
+        </form>
+        <form id="columnSelForm" class="sec-sel-form hidden" data-selform="column">
+          <h3>Column (AISC 360 E3)</h3>
+          <div class="loads-grid">
+            <label>Pu (kN)<input type="number" id="colPu" value="800" step="10" min="1"/></label>
+            <label>KL (m)<input type="number" id="colKl" value="3" step="0.5" min="0.5"/></label>
+            <label>fy (MPa)<input type="number" id="colFy" value="345" step="5" min="1"/></label>
+          </div>
+          <button type="submit" class="btn-primary">Select Column</button>
+        </form>
+      </div>
+
+      <div id="secResults" class="sec-results glass"><p class="placeholder">Search for a section or run a selection.</p></div>
+    </div>
   </div>
 </main>
 

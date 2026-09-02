@@ -35,8 +35,8 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [ ] **Response spectrum analysis** — Multi-mode (Cantilever) method for 3D structures.
 
 ## Phase 5 — Frontend & UX
-- [ ] **Load determination UI** — Forms for wind/seismic/snow inputs, results panel with code references.
-- [ ] **Section selection UI** — Pick member group, set loads, get recommended section.
+- [x] **Load determination UI** — Loads tab: wind/seismic/snow forms, results panels with code references, story-force tables, and apply-to-3D-model + analyze.
+- [x] **Section selection UI** — Sections tab "Section Selection" subtab: beam (Mu/Vu/Lb/Cb/fy) and column (Pu/KL/fy) forms, recommended section + top-5 candidates.
 - [ ] **Story drift visualization** — Color-code members by drift/utilization.
 - [ ] **Export to PDF** — Render markdown report to PDF.
 

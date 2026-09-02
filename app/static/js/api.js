@@ -93,3 +93,19 @@ export function analyzeStructureWithLoads(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function selectBeam(inputs) {
+  return jsonRequest('/api/design/beam', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
+export function selectColumn(inputs) {
+  return jsonRequest('/api/design/column', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
