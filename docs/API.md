@@ -297,6 +297,121 @@ Analyze a drawn structure model from the 2D or 3D canvas.
 
 ---
 
+## Load Determination (deterministic, no LLM)
+
+### POST /api/loads/wind
+
+ASCE 7-22 wind loads (simplified MWFRS procedure): velocity pressures, MWFRS pressures, base shear, story forces.
+
+**Request Body**:
+
+```json
+{
+  "basic_wind_speed_ms": 30.0,
+  "exposure": "C",
+  "height_m": 8.0,
+  "length_m": 6.0,
+  "width_m": 6.0,
+  "story_height_m": 4.0,
+  "internal_pressure": "minor_openings"
+}
+```
+
+**Response**: `status: "ok"` with `results` containing `velocity_pressures_kpa`, `mwfrs_pressures`, `base_shear_x_kn`, `base_shear_y_kn`, `roof_uplift_kn`, and `story_forces` (`[{story, z_m, force_kn}]`).
+
+---
+
+### POST /api/loads/seismic
+
+ASCE 7-22 equivalent static force procedure: site coefficients, SDS/SD1, Cs, base shear V, story forces.
+
+**Request Body**:
+
+```json
+{
+  "spectral_accel_sd": 0.4,
+  "spectral_accel_1s": 0.2,
+  "site_class": "D",
+  "risk_category": "II",
+  "building_weight_kn": 5000.0,
+  "height_m": 8.0,
+  "structural_system": "moment_frame"
+}
+```
+
+**Response**: `status: "ok"` with `results` containing `site_coefficients`, `design_params`, `base_shear_kn`, and `story_forces` (`[{story, z_m, force_kn}]`).
+
+---
+
+### POST /api/loads/snow
+
+ASCE 7-22 roof snow loads (flat/sloped ps, drift).
+
+**Request Body**:
+
+```json
+{
+  "ground_snow_load_kpa": 2.0,
+  "exposure": "partially_shielded",
+  "thermal": "heated",
+  "risk_category": "II",
+  "roof_slope_deg": 0.0,
+  "drift": false
+}
+```
+
+**Response**: `status: "ok"` with `results` containing `flat_roof_ps_kpa`, `sloped_roof_ps_kpa`, `drift_load_kpa`, and `total_design_snow_kpa`.
+
+---
+
+### POST /api/loads/slab
+
+ACI 318 two-way slab analysis (coefficients, reinforcement, deflection).
+
+**Request Body**: `SlabInputs` (span, thickness, loads, reinforcement).
+
+**Response**: `status: "ok"` with `results` containing flexure, deflection, and minimum-thickness checks.
+
+---
+
+### POST /api/loads/apply-story-forces
+
+Compute wind or seismic story forces and map them onto a drawn 3D model as nodal loads. Returns the augmented model (no analysis run).
+
+**Request Body**:
+
+```json
+{
+  "load_type": "wind",
+  "wind": { "basic_wind_speed_ms": 30.0, "exposure": "C", "height_m": 8.0, "length_m": 6.0, "width_m": 6.0, "story_height_m": 4.0 },
+  "model": { "nodes": [ { "id": 1, "x": 0, "y": 0, "z": 0, "support": "fixed" } ], "members": [] },
+  "direction": "x",
+  "distribution": "equal"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| load_type | string | Yes | `wind` or `seismic` |
+| wind / seismic (or inputs) | object | Yes | Load tool inputs (see above) |
+| model | object | Yes | Drawn 3D structure (string supports allowed) |
+| direction | string | No | `x` (default) or `y` |
+| distribution | string | No | `equal` (default) or `windward` |
+
+**Response**: `status: "ok"` with `load_results`, `applied` (per-story assignment), `warnings`, and `model` (augmented with `W`/`EQ` nodal loads).
+
+---
+
+### POST /api/analyze/structure-with-loads
+
+End-to-end: compute wind/seismic story forces, apply them to the drawn 3D model as nodal loads, run the 3D analysis, and report story drifts.
+
+**Request Body**: Same as `/api/loads/apply-story-forces`.
+
+**Response**: `status: "ok"` with `load_results`, `applied`, `warnings`, `model`, `results` (full 3D analysis including `story_response.story_drifts`), and `report_markdown`.
+
+---
+
 ### GET /api/projects
 
 List all saved projects.

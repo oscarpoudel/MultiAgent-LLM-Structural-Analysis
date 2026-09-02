@@ -14,11 +14,10 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - Never fabricate engineering results; all numbers come from deterministic solvers.
 
 ## Active TODO
-- [ ] Improve test coverage for frame/truss/3d solvers (currently <50%).
-- [ ] Add snow load tool (ASCE 7-22).
-- [ ] Integrate wind/seismic loads onto drawn 3D model (apply as nodal loads).
+- [ ] Improve test coverage for 3d solver (opensees_3d now ~79%; frame 93%, truss 95%).
 - [ ] Add load-determination UI (wind/seismic/snow forms + results panel).
 - [ ] Add section-selection UI (member group -> recommended section).
+- [ ] Wire story-force application into the chat/canvas agent path (currently REST-only).
 
 ## Completed
 - [x] Created progress.md.
@@ -26,10 +25,13 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Wrote docs/Roadmap.md with prioritized roadmap.
 - [x] ASCE 7-22 wind load tool (velocity pressure, MWFRS pressures, base shear, story forces) + route + tests.
 - [x] ASCE 7-22 seismic base shear tool (site coefficients, SDS/SD1, Cs, V, story forces) + route + tests.
+- [x] ASCE 7-22 snow load tool (flat/sloped ps, drift) + route + tests.
 - [x] ACI 318 two-way slab analysis tool (coefficients, reinforcement, deflection) + route + tests.
 - [x] AISC 360 steel beam section selection (LTB + shear) + route + tests.
 - [x] AISC 360 steel column section selection (E3) + route + tests.
-- [x] Test count 54 -> 117; coverage 63% -> 68.1%.
+- [x] Fix reaction sign in direct-stiffness frame/truss fallbacks (R = -penalty*U); add fallback + report tests.
+- [x] Integrate wind/seismic story forces onto drawn 3D model: app/tools/story_forces.py (equal/windward nodal distribution) + POST /api/loads/apply-story-forces + POST /api/analyze/structure-with-loads (end-to-end 3D analysis + story drifts) + tests.
+- [x] Test count 117 -> 156; coverage 68.1% -> 78.92%.
 
 ## Backlog Ideas
 - [ ] Concrete beam/column design (ACI 318).

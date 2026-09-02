@@ -208,19 +208,8 @@ def _build_analysis_response(prompt: str) -> AnalyzeResponse:
 def _analyze_structure_model(analysis_type: str, model: dict) -> tuple[dict, str]:
     # Convert string support to Support3D objects for 3d_frame
     if analysis_type == "3d_frame" and "nodes" in model:
-        import copy
-        model = copy.deepcopy(model)
-        for node in model.get("nodes", []):
-            s = node.get("support", "free")
-            if isinstance(s, str):
-                if s == "free":
-                    node["support"] = None
-                elif s == "roller":
-                    node["support"] = {"ux": False, "uy": False, "uz": True, "rx": False, "ry": False, "rz": False}
-                elif s == "pin":
-                    node["support"] = {"ux": True, "uy": True, "uz": True, "rx": False, "ry": False, "rz": False}
-                else:  # fixed
-                    node["support"] = {"ux": True, "uy": True, "uz": True, "rx": True, "ry": True, "rz": True}
+        from app.tools.opensees_3d import convert_3d_support_strings
+        model = convert_3d_support_strings(model)
     if analysis_type == "truss":
         from app.tools.truss import analyze_truss as run_truss
         inputs = TrussInputs.model_validate(model)

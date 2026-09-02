@@ -216,6 +216,61 @@ Returns dict with:
 - max_displacement: Maximum displacement magnitude and location
 - warnings: List of engineering warnings
 
+## app/tools/story_forces.py - Story-Force Application
+
+Deterministically maps wind/seismic story forces onto a drawn 3D model as nodal loads.
+
+**Function**:
+
+- `apply_story_forces(inputs, story_forces, *, case, direction, distribution) -> dict`
+  - `story_forces`: list of `{"z_m": float, "force_kn": float}` (from the wind/seismic tools)
+  - `case`: load case name for new loads (e.g. `"W"`, `"EQ"`)
+  - `direction`: `"x"` or `"y"`
+  - `distribution`: `"equal"` (all nodes at the nearest level) or `"windward"` (face with the minimum coordinate along `direction`)
+
+**Behavior**:
+
+- Each story force is snapped to the model level (elevation) nearest its `z_m`.
+- The force is split evenly across the target nodes at that level.
+- Existing nodal loads are preserved; the original inputs are not mutated.
+- A warning is emitted when a story force is far (>2.5 m) from the nearest level.
+
+**Output**: dict with `inputs` (augmented `Structure3DInputs`), `applied` (per-story assignment), and `warnings`.
+
+## Load Determination & Design Tools
+
+These tools are deterministic (no LLM) and expose a single `calculate_*` function each.
+
+### app/tools/wind.py - ASCE 7-22 Wind Loads
+
+`calculate_wind_loads(inputs: WindInputs) -> dict`
+
+Simplified MWFRS procedure: velocity pressure `qz`, exposure, gust/directionality/internal-pressure factors, MWFRS external pressures, base shear (x/y), roof uplift, and story forces.
+
+### app/tools/seismic.py - ASCE 7-22 Seismic Base Shear
+
+`calculate_seismic_base_shear(inputs: SeismicInputs) -> dict`
+
+Equivalent static force procedure: site coefficients (Fa/Fv), SDS/SD1, Ts, period, Cs (bounded), base shear V, and vertical story-force distribution.
+
+### app/tools/snow.py - ASCE 7-22 Snow Loads
+
+`calculate_snow_loads(inputs: SnowInputs) -> dict`
+
+Ground snow load, exposure/thermal/importance factors, flat and sloped roof snow load, and simplified drift load.
+
+### app/tools/slab.py - ACI 318 Two-Way Slab
+
+`calculate_slab(inputs: SlabInputs) -> dict`
+
+Two-way slab coefficients, reinforcement, and deflection checks.
+
+### app/tools/section_select.py - AISC 360 Section Selection
+
+`select_beam(inputs: BeamSelectionInputs) -> dict` / `select_column(inputs: ColumnSelectionInputs) -> dict`
+
+Iterates W-shapes from the section database to find the lightest adequate section for flexure/shear (beam) or axial (column, AISC E3).
+
 ## app/tools/load_combinations.py - Load Combination Generator
 
 Generates ASCE 7-16 load combinations for structural design.

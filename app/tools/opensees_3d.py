@@ -1,8 +1,25 @@
 from __future__ import annotations
 
+import copy
 from itertools import pairwise
 
 from app.models import Structure3DInputs
+
+_SUPPORT_PRESETS = {
+    "roller": {"ux": False, "uy": False, "uz": True, "rx": False, "ry": False, "rz": False},
+    "pin": {"ux": True, "uy": True, "uz": True, "rx": False, "ry": False, "rz": False},
+    "fixed": {"ux": True, "uy": True, "uz": True, "rx": True, "ry": True, "rz": True},
+}
+
+
+def convert_3d_support_strings(model: dict) -> dict:
+    """Convert canvas-style string supports ("free"/"roller"/"pin"/"fixed") to Support3D dicts."""
+    model = copy.deepcopy(model)
+    for node in model.get("nodes", []):
+        support = node.get("support", "free")
+        if isinstance(support, str):
+            node["support"] = None if support == "free" else _SUPPORT_PRESETS.get(support, _SUPPORT_PRESETS["fixed"])
+    return model
 
 
 def _is_parallel(a: tuple[float, float, float], b: tuple[float, float, float]) -> bool:

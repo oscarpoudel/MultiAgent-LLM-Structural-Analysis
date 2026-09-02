@@ -12,6 +12,7 @@ from app.models import (
     ChatRequest,
     ChatResponse,
     FrameInputs,
+    Structure3DInputs,
     TrussInputs,
 )
 from app.tools.load_combinations import get_controlling_combination, run_all_load_combinations
@@ -178,6 +179,64 @@ def analyze_structure():
     except Exception as error:
         log.error("analyze_structure_error", extra={"error": str(error)})
         return jsonify({"status": "error", "message": str(error)}), 500
+
+
+@bp.post("/api/analyze/structure-with-loads")
+def analyze_structure_with_loads():
+    """End-to-end: compute wind/seismic story forces, apply them to the drawn
+    3D model as nodal loads, run the 3D analysis, and report story drifts.
+
+    Body:
+    - load_type: "wind" | "seismic"
+    - wind / seismic (or inputs): load tool inputs
+    - model: drawn 3D structure (string supports allowed)
+    - direction: "x" | "y" (default "x")
+    - distribution: "equal" | "windward" (default "equal")
+    """
+    from app.routes.loads import _compute_story_forces
+    from app.tools.opensees_3d import analyze_3d_structure_opensees, convert_3d_support_strings
+    from app.tools.story_forces import apply_story_forces
+
+    data = request.get_json(silent=True) or {}
+    try:
+        load_results, story_forces, load_warnings, case = _compute_story_forces(data)
+        model = convert_3d_support_strings(data.get("model") or {})
+        inputs = Structure3DInputs.model_validate(model)
+        outcome = apply_story_forces(
+            inputs,
+            story_forces,
+            case=case,
+            direction=str(data.get("direction", "x")),
+            distribution=str(data.get("distribution", "equal")),
+        )
+    except (ValidationError, ValueError, KeyError) as error:
+        return jsonify({"status": "error", "message": str(error)}), 400
+
+    results = analyze_3d_structure_opensees(outcome["inputs"])
+    if results.get("status") == "error":
+        return jsonify({"status": "error", "message": results.get("solver_warning", "3D analysis failed")}), 500
+
+    from app.tools.report import format_engineering_report
+    load_type = str(data.get("load_type", "wind")).lower()
+    report_md = format_engineering_report(
+        f"Wind/seismic story forces applied to drawn 3D model ({load_type})",
+        ["Preliminary elastic 3D analysis.", "Rigid beam-column connections.",
+         f"Story forces applied as nodal loads in the {data.get('direction', 'x')!s} direction."],
+        load_warnings + outcome["warnings"],
+        results,
+        analysis_type="3d_frame",
+    )
+
+    return jsonify({
+        "status": "ok",
+        "load_type": load_type,
+        "load_results": load_results,
+        "applied": outcome["applied"],
+        "warnings": load_warnings + outcome["warnings"],
+        "model": outcome["inputs"].model_dump(mode="json"),
+        "results": results,
+        "report_markdown": report_md,
+    })
 
 
 @bp.post("/api/load-combinations")

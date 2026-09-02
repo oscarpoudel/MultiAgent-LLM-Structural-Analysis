@@ -526,3 +526,128 @@ Beam Analysis (simply_supported)
     assert "Span: None" not in body
     assert "## Base Reactions" in body
     assert "## Detailed Analysis Data" in body
+
+
+def _two_story_3d_model() -> dict:
+    nodes = []
+    nid = 1
+    for z in (0.0, 4.0, 8.0):
+        for x in (0.0, 6.0):
+            for y in (0.0, 6.0):
+                nodes.append({"id": nid, "x": x, "y": y, "z": z, "support": "fixed" if z == 0 else "free"})
+                nid += 1
+    members = []
+    mid = 1
+    # Vertical columns
+    for i in range(4):
+        members.append({"id": mid, "start_node": i + 1, "end_node": i + 5})
+        mid += 1
+        members.append({"id": mid, "start_node": i + 5, "end_node": i + 9})
+        mid += 1
+    # Beams per level
+    for base in (1, 5, 9):
+        for a, b in ((0, 1), (1, 3), (3, 2), (2, 0)):
+            members.append({"id": mid, "start_node": base + a, "end_node": base + b})
+            mid += 1
+    return {"nodes": nodes, "members": members}
+
+
+def test_apply_story_forces_route_wind_equal() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/loads/apply-story-forces",
+        json={
+            "load_type": "wind",
+            "wind": {
+                "basic_wind_speed_ms": 30.0, "exposure": "C", "height_m": 8.0,
+                "length_m": 6.0, "width_m": 6.0, "story_height_m": 4.0,
+            },
+            "model": _two_story_3d_model(),
+            "direction": "x",
+            "distribution": "equal",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["load_type"] == "wind"
+    # Story forces computed and applied
+    assert data["load_results"]["story_forces"]
+    assert data["applied"]
+    # Augmented model carries W-case nodal loads
+    w_loads = [l for l in data["model"]["nodal_loads"] if l["case"] == "W"]
+    assert w_loads
+    assert sum(l["fx_kn"] for l in w_loads) > 0
+
+
+def test_apply_story_forces_route_seismic_windward() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/loads/apply-story-forces",
+        json={
+            "load_type": "seismic",
+            "seismic": {
+                "spectral_accel_sd": 0.4, "spectral_accel_1s": 0.2, "site_class": "D",
+                "risk_category": "II", "building_weight_kn": 5000.0, "height_m": 8.0,
+            },
+            "model": _two_story_3d_model(),
+            "direction": "x",
+            "distribution": "windward",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["load_type"] == "seismic"
+    eq_loads = [l for l in data["model"]["nodal_loads"] if l["case"] == "EQ"]
+    assert eq_loads
+    # Windward: only the x=0 face (2 nodes) per level receives the force
+    node_x = {n["id"]: n["x"] for n in data["model"]["nodes"]}
+    assert all(node_x[l["node_id"]] == 0.0 for l in eq_loads)
+    # 2 levels x 2 windward nodes = 4 loads
+    assert len(eq_loads) == 4
+    # Total lateral force equals the sum of the story forces
+    total_eq = sum(l["fx_kn"] for l in eq_loads)
+    total_stories = sum(s["force_kn"] for s in data["load_results"]["story_forces"])
+    assert abs(total_eq - total_stories) < 1e-6
+
+
+def test_apply_story_forces_route_rejects_bad_load_type() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/loads/apply-story-forces",
+        json={"load_type": "bogus", "model": _two_story_3d_model()},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["status"] == "error"
+
+
+def test_analyze_structure_with_loads_end_to_end_wind() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/analyze/structure-with-loads",
+        json={
+            "load_type": "wind",
+            "wind": {
+                "basic_wind_speed_ms": 40.0, "exposure": "C", "height_m": 8.0,
+                "length_m": 6.0, "width_m": 6.0, "story_height_m": 4.0,
+            },
+            "model": _two_story_3d_model(),
+            "direction": "x",
+            "distribution": "equal",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["results"]["solver"] == "openseespy_3d_frame"
+    assert data["results"]["is_finite"] is True
+    # Story drifts reported
+    drifts = data["results"]["story_response"]["story_drifts"]
+    assert drifts
+    assert all(d["drift_mm"] > 0 for d in drifts)
+    # Report generated
+    assert "Preliminary 3D Frame Analysis Report" in data["report_markdown"]

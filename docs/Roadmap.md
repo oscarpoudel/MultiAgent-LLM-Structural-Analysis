@@ -19,18 +19,18 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [x] Markdown report formatter
 - [x] Slab area-load distribution on canvas
 
-## Phase 2 — Load Determination (IN PROGRESS)
-- [ ] **Wind load tool** — ASCE 7-22 simplified procedure: velocity pressure qz, exposure, topographic, gust factor, main wind force resisting system (MWFRS) pressures, internal pressure. Deterministic.
-- [ ] **Seismic base shear tool** — ASCE 7-22 equivalent static force procedure: SDS/SD1 from site class + spectral params, Ri, Rp, T, Cs, base shear V, story forces, drift check. Deterministic.
-- [ ] **Snow load tool** — ASCE 7-22 ground snow load, balanced/unbalanced roof snow, drift (simplified). Deterministic.
+## Phase 2 — Load Determination (DONE)
+- [x] **Wind load tool** — ASCE 7-22 simplified procedure: velocity pressure qz, exposure, topographic, gust factor, main wind force resisting system (MWFRS) pressures, internal pressure. Deterministic.
+- [x] **Seismic base shear tool** — ASCE 7-22 equivalent static force procedure: SDS/SD1 from site class + spectral params, Ri, Rp, T, Cs, base shear V, story forces, drift check. Deterministic.
+- [x] **Snow load tool** — ASCE 7-22 ground snow load, balanced/unbalanced roof snow, drift (simplified). Deterministic.
 
-## Phase 3 — Element Design Checks
-- [ ] **Steel beam section selection** — Given M_u, V_u, L_b, C_b: iterate W-shapes from database, check flexure (phi_b*Mn) and shear (phi_v*Vn), compactness, deflection. Return lightest adequate section.
-- [ ] **Steel column section selection** — Given P_u, K*L: iterate W-shapes, check phi_c*Pn (AISC E3). Return lightest adequate section.
-- [ ] **Two-way slab analysis** — Given span, thickness, load, reinforcement: check flexure (ACI 318), deflection, minimum thickness. Deterministic.
+## Phase 3 — Element Design Checks (DONE)
+- [x] **Steel beam section selection** — Given M_u, V_u, L_b, C_b: iterate W-shapes from database, check flexure (phi_b*Mn) and shear (phi_v*Vn), compactness, deflection. Return lightest adequate section.
+- [x] **Steel column section selection** — Given P_u, K*L: iterate W-shapes, check phi_c*Pn (AISC E3). Return lightest adequate section.
+- [x] **Two-way slab analysis** — Given span, thickness, load, reinforcement: check flexure (ACI 318), deflection, minimum thickness. Deterministic.
 
-## Phase 4 — Analysis Integration
-- [ ] **Wind/seismic on drawn 3D model** — Apply computed pressure/forces as nodal loads on canvas model, run 3D analysis, report story drifts.
+## Phase 4 — Analysis Integration (IN PROGRESS)
+- [x] **Wind/seismic on drawn 3D model** — Apply computed story forces as nodal loads on canvas model (equal or windward distribution), run 3D analysis, report story drifts. `app/tools/story_forces.py` + `/api/loads/apply-story-forces` + `/api/analyze/structure-with-loads`.
 - [ ] **P-delta second-order analysis** — Story drift, P-delta moment amplification for frames.
 - [ ] **Response spectrum analysis** — Multi-mode (Cantilever) method for 3D structures.
 
