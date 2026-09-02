@@ -28,6 +28,7 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [x] **Steel beam section selection** — Given M_u, V_u, L_b, C_b: iterate W-shapes from database, check flexure (phi_b*Mn) and shear (phi_v*Vn), compactness, deflection. Return lightest adequate section.
 - [x] **Steel column section selection** — Given P_u, K*L: iterate W-shapes, check phi_c*Pn (AISC E3). Return lightest adequate section.
 - [x] **Two-way slab analysis** — Given span, thickness, load, reinforcement: check flexure (ACI 318), deflection, minimum thickness. Deterministic.
+- [x] **Concrete beam/column design** — Singly reinforced beam (flexure As/rho/phiMn, one-way shear Vc/stirrup spacing, bar count) and circular tied/spiral column (As, rho limits, phiPn, slenderness check). ACI 318, deterministic.
 
 ## Phase 4 — Analysis Integration (IN PROGRESS)
 - [x] **Wind/seismic on drawn 3D model** — Apply computed story forces as nodal loads on canvas model (equal or windward distribution), run 3D analysis, report story drifts. `app/tools/story_forces.py` + `/api/loads/apply-story-forces` + `/api/analyze/structure-with-loads`.
@@ -48,7 +49,7 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [ ] **CI coverage gate** — Block PRs below threshold.
 
 ## Backlog Ideas
-- [ ] Concrete beam/column design (ACI 318)
+- [x] Concrete beam/column design (ACI 318) — `app/tools/concrete.py` + `/api/design/concrete-beam` + `/api/design/concrete-column` + UI.
 - [ ] Timber design (NDS)
 - [ ] Foundation design (footing, pile)
 - [ ] Fatigue analysis

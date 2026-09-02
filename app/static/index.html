@@ -376,10 +376,11 @@
 <main id="tab-sections" class="page hidden">
   <div class="sec-layout">
     <div class="sec-head glass">
-      <h2>Steel Sections</h2>
+      <h2>Sections &amp; Design</h2>
       <div class="sec-subtabs">
         <button class="sec-subtab active" data-sectab="library">Library</button>
-        <button class="sec-subtab" data-sectab="select">Section Selection</button>
+        <button class="sec-subtab" data-sectab="select">Steel Selection</button>
+        <button class="sec-subtab" data-sectab="concrete">Concrete Design</button>
       </div>
       <div class="sec-row" data-secrow="library">
         <select id="secType"><option value="all">All</option><option value="w">W-Shapes</option><option value="hss">HSS</option><option value="l">Angles</option></select>
@@ -389,6 +390,10 @@
       <div class="sec-row hidden" data-secrow="select">
         <button class="sec-subtab active" data-selkind="beam">Beam (Mu, Vu, Lb)</button>
         <button class="sec-subtab" data-selkind="column">Column (Pu, KL)</button>
+      </div>
+      <div class="sec-row hidden" data-secrow="concrete">
+        <button class="sec-subtab active" data-cek="beam">Beam (Mu, Vu, b, h)</button>
+        <button class="sec-subtab" data-cek="column">Column (Pu, Ø)</button>
       </div>
     </div>
 
@@ -417,7 +422,37 @@
         </form>
       </div>
 
-      <div id="secResults" class="sec-results glass"><p class="placeholder">Search for a section or run a selection.</p></div>
+      <!-- CONCRETE DESIGN FORMS -->
+      <div id="secConcreteForms" class="sec-select-forms glass hidden">
+        <form id="concreteBeamForm" class="sec-sel-form" data-ccform="beam">
+          <h3>Beam (ACI 318)</h3>
+          <div class="loads-grid">
+            <label>Mu (kN-m)<input type="number" id="cbMu" value="150" step="1" min="1"/></label>
+            <label>Vu (kN)<input type="number" id="cbVu" value="80" step="1" min="0"/></label>
+            <label>Width b (mm)<input type="number" id="cbB" value="300" step="10" min="50"/></label>
+            <label>Depth h (mm)<input type="number" id="cbH" value="500" step="10" min="100"/></label>
+            <label>f'c (MPa)<input type="number" id="cbFc" value="25" step="1" min="10"/></label>
+            <label>fy (MPa)<input type="number" id="cbFy" value="420" step="10" min="250"/></label>
+          </div>
+          <button type="submit" class="btn-primary">Design Beam</button>
+        </form>
+        <form id="concreteColumnForm" class="sec-sel-form hidden" data-ccform="column">
+          <h3>Column (ACI 318)</h3>
+          <div class="loads-grid">
+            <label>Pu (kN)<input type="number" id="ccPu" value="800" step="10" min="1"/></label>
+            <label>Diameter (mm)<input type="number" id="ccD" value="400" step="10" min="100"/></label>
+            <label>f'c (MPa)<input type="number" id="ccFc" value="25" step="1" min="10"/></label>
+            <label>fy (MPa)<input type="number" id="ccFy" value="420" step="10" min="250"/></label>
+            <label>Reinforcement
+              <select id="ccTied"><option value="true" selected>Tied</option><option value="false">Spiral</option></select>
+            </label>
+            <label>kl/r<input type="number" id="ccKlr" value="0" step="1" min="0"/></label>
+          </div>
+          <button type="submit" class="btn-primary">Design Column</button>
+        </form>
+      </div>
+
+      <div id="secResults" class="sec-results glass"><p class="placeholder">Search for a section or run a design.</p></div>
     </div>
   </div>
 </main>

@@ -559,6 +559,38 @@ def test_beam_selection_route_rejects_invalid() -> None:
     assert response.get_json()["status"] == "error"
 
 
+def test_concrete_beam_route_returns_results() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/design/concrete-beam",
+        json={"moment_kn_m": 150.0, "shear_kn": 80.0, "width_mm": 300.0, "depth_mm": 500.0},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["results"]["flexure"]["phi_mn_kn_m"] > 150.0
+    assert data["results"]["suggested_bars"]["count"] >= 1
+
+
+def test_concrete_column_route_returns_results() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/design/concrete-column",
+        json={"axial_load_kn": 800.0, "diameter_mm": 400.0},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["results"]["phi_pn_kn"] > 800.0
+    assert data["results"]["suggested_bars"]["count"] >= 1
+
+
+def test_concrete_routes_reject_invalid() -> None:
+    client = app.test_client()
+    assert client.post("/api/design/concrete-beam", json={"moment_kn_m": -1.0}).status_code == 400
+    assert client.post("/api/design/concrete-column", json={"axial_load_kn": -1.0}).status_code == 400
+
+
 def test_export_report_regenerates_stale_3d_beam_template() -> None:
     client = app.test_client()
     stale_report = """# Preliminary Structural Analysis Report

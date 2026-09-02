@@ -277,6 +277,31 @@ class ColumnSelectionInputs(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Concrete design inputs (ACI 318)
+# ---------------------------------------------------------------------------
+
+class ConcreteBeamInputs(BaseModel):
+    moment_kn_m: float = Field(..., gt=0, description="Factored bending moment Mu (kN-m)")
+    shear_kn: float = Field(0.0, ge=0, description="Factored shear Vu (kN)")
+    width_mm: float = Field(..., gt=0, description="Beam width b (mm)")
+    depth_mm: float = Field(..., gt=0, description="Total beam depth h (mm)")
+    effective_depth_mm: float | None = Field(None, gt=0, description="Effective depth d (mm); defaults to h - cover - stirrup - bar/2")
+    concrete_fck_mpa: float = Field(25.0, gt=0, description="Specified compressive strength f'c (MPa)")
+    steel_fy_mpa: float = Field(420.0, gt=0, description="Yield strength of reinforcement fy (MPa)")
+    bar_dia_mm: float = Field(20.0, gt=0, description="Main bar diameter (mm) for spacing suggestion")
+    stirrup_dia_mm: float = Field(10.0, gt=0, description="Stirrup diameter (mm) for shear design")
+
+
+class ConcreteColumnInputs(BaseModel):
+    axial_load_kn: float = Field(..., gt=0, description="Factored axial load Pu (kN)")
+    diameter_mm: float = Field(..., gt=0, description="Column diameter (mm)")
+    concrete_fck_mpa: float = Field(25.0, gt=0, description="Specified compressive strength f'c (MPa)")
+    steel_fy_mpa: float = Field(420.0, gt=0, description="Yield strength of reinforcement fy (MPa)")
+    tied: bool = Field(True, description="True for tied column, False for spiral column")
+    kl_r: float = Field(0.0, ge=0, description="Effective slenderness ratio kl/r; 0 = short column (no reduction)")
+
+
+# ---------------------------------------------------------------------------
 # Agent trace / responses
 # ---------------------------------------------------------------------------
 

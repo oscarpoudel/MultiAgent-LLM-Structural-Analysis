@@ -109,3 +109,19 @@ export function selectColumn(inputs) {
     body: JSON.stringify(inputs),
   });
 }
+
+export function designConcreteBeam(inputs) {
+  return jsonRequest('/api/design/concrete-beam', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
+export function designConcreteColumn(inputs) {
+  return jsonRequest('/api/design/concrete-column', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}

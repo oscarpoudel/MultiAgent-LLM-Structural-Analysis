@@ -1,4 +1,4 @@
-import { fetchSection, searchSections, selectBeam, selectColumn } from './api.js';
+import { designConcreteBeam, designConcreteColumn, fetchSection, searchSections, selectBeam, selectColumn } from './api.js';
 import { byId, $$ } from './dom.js';
 
 export function initSections() {
@@ -10,6 +10,9 @@ export function initSections() {
   $$('.sec-subtab[data-selkind]').forEach((btn) => {
     btn.addEventListener('click', () => switchSelectionKind(btn.dataset.selkind));
   });
+  $$('.sec-subtab[data-cek]').forEach((btn) => {
+    btn.addEventListener('click', () => switchConcreteKind(btn.dataset.cek));
+  });
   byId('beamSelForm').addEventListener('submit', (e) => {
     e.preventDefault();
     runBeamSelection();
@@ -18,19 +21,34 @@ export function initSections() {
     e.preventDefault();
     runColumnSelection();
   });
+  byId('concreteBeamForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    runConcreteBeam();
+  });
+  byId('concreteColumnForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    runConcreteColumn();
+  });
 }
 
 function switchSectionTab(name) {
   $$('.sec-subtab[data-sectab]').forEach((t) => t.classList.toggle('active', t.dataset.sectab === name));
-  const isSelect = name === 'select';
   $$('[data-secrow]').forEach((row) => row.classList.toggle('hidden', row.dataset.secrow !== name));
-  byId('secSelectForms').classList.toggle('hidden', !isSelect);
-  byId('secResults').closest('.sec-body').classList.toggle('with-forms', isSelect);
+  const showSteel = name === 'select';
+  const showConcrete = name === 'concrete';
+  byId('secSelectForms').classList.toggle('hidden', !showSteel);
+  byId('secConcreteForms').classList.toggle('hidden', !showConcrete);
+  byId('secResults').closest('.sec-body').classList.toggle('with-forms', showSteel || showConcrete);
 }
 
 function switchSelectionKind(kind) {
   $$('.sec-subtab[data-selkind]').forEach((b) => b.classList.toggle('active', b.dataset.selkind === kind));
-  $$('.sec-sel-form').forEach((f) => f.classList.toggle('hidden', f.dataset.selform !== kind));
+  $$('.sec-sel-form[data-selform]').forEach((f) => f.classList.toggle('hidden', f.dataset.selform !== kind));
+}
+
+function switchConcreteKind(kind) {
+  $$('.sec-subtab[data-cek]').forEach((b) => b.classList.toggle('active', b.dataset.cek === kind));
+  $$('.sec-sel-form[data-ccform]').forEach((f) => f.classList.toggle('hidden', f.dataset.ccform !== kind));
 }
 
 function num(id) {
@@ -87,7 +105,81 @@ async function runColumnSelection() {
 }
 
 function renderSelectionError(content, data) {
-  content.innerHTML = `<div class="loads-error"><strong>Error</strong><p>${data.message || 'Selection failed.'}</p></div>`;
+  content.innerHTML = `<div class="loads-error"><strong>Error</strong><p>${data.message || 'Design failed.'}</p></div>`;
+}
+
+async function runConcreteBeam() {
+  const inputs = {
+    moment_kn_m: num('cbMu'),
+    shear_kn: num('cbVu'),
+    width_mm: num('cbB'),
+    depth_mm: num('cbH'),
+    concrete_fck_mpa: num('cbFc'),
+    steel_fy_mpa: num('cbFy'),
+  };
+  const content = byId('secResults');
+  content.innerHTML = '<p class="placeholder">Designing concrete beam…</p>';
+  const data = await designConcreteBeam(inputs);
+  if (data.status !== 'ok') return renderSelectionError(content, data);
+  renderConcrete(content, data.results, 'beam');
+}
+
+async function runConcreteColumn() {
+  const inputs = {
+    axial_load_kn: num('ccPu'),
+    diameter_mm: num('ccD'),
+    concrete_fck_mpa: num('ccFc'),
+    steel_fy_mpa: num('ccFy'),
+    tied: byId('ccTied').value === 'true',
+    kl_r: num('ccKlr'),
+  };
+  const content = byId('secResults');
+  content.innerHTML = '<p class="placeholder">Designing concrete column…</p>';
+  const data = await designConcreteColumn(inputs);
+  if (data.status !== 'ok') return renderSelectionError(content, data);
+  renderConcrete(content, data.results, 'column');
+}
+
+function renderConcrete(content, r, kind) {
+  let html = `<h3>Concrete ${kind === 'beam' ? 'Beam' : 'Column'} — ${r.code_reference}</h3>`;
+  if (kind === 'beam') {
+    const f = r.flexure;
+    const s = r.shear;
+    const bars = r.suggested_bars;
+    html += `<div class="sec-props">
+      ${selRow('d (eff)', r.effective_depth_mm, 'mm')}
+      ${selRow('As req', f.required_as_mm2, 'mm2')}
+      ${selRow('ρ design', f.rho_design)}
+      ${selRow('ρ min', f.rho_min)}
+      ${selRow('φMn', f.phi_mn_kn_m, 'kN-m')}
+      ${selRow('Flex util', f.flex_util ?? '—')}
+      ${selRow('Vc', s.vc_kn, 'kN')}
+      ${selRow('Vu/φVc', s.vu_over_vc)}
+      ${selRow('Stirrups', s.stirrup_required ? 'Yes' : 'No')}
+      ${s.spacing_mm ? selRow('Spacing', s.spacing_mm, 'mm') : ''}
+      ${selRow('Bars', `${bars.count} × ${bars.bar_dia_mm} mm`)}
+      ${bars.clear_spacing_mm != null ? selRow('Clear spacing', bars.clear_spacing_mm, 'mm') : ''}
+    </div>`;
+  } else {
+    const bars = r.suggested_bars;
+    html += `<div class="sec-props">
+      ${selRow('Ag', r.gross_area_mm2, 'mm2')}
+      ${selRow('φ', r.phi)}
+      ${selRow('As req', r.required_as_mm2, 'mm2')}
+      ${selRow('As min', r.min_as_mm2, 'mm2')}
+      ${selRow('As design', r.design_as_mm2, 'mm2')}
+      ${selRow('ρ design', r.rho_design)}
+      ${selRow('ρ min', r.rho_min)}
+      ${selRow('φPn', r.phi_pn_kn, 'kN')}
+      ${selRow('Util', r.util)}
+      ${selRow('Slenderness OK', r.slenderness_ok ? 'Yes' : 'No')}
+      ${selRow('Bars', `${bars.count} × ${bars.bar_dia_mm} mm`)}
+    </div>`;
+  }
+  if (r.warnings && r.warnings.length) {
+    html += `<div class="loads-warn"><ul>${r.warnings.map((w) => `<li>${w}</li>`).join('')}</ul></div>`;
+  }
+  content.innerHTML = html;
 }
 
 function selRow(label, value, unit = '') {
