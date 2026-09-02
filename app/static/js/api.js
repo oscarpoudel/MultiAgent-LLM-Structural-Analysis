@@ -125,3 +125,19 @@ export function designConcreteColumn(inputs) {
     body: JSON.stringify(inputs),
   });
 }
+
+export function pdeltaAmplify(payload) {
+  return jsonRequest('/api/loads/pdelta-amplify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function pdeltaForces(payload) {
+  return jsonRequest('/api/loads/pdelta-forces', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}

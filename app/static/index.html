@@ -267,6 +267,7 @@
         <button class="loads-subtab active" data-loadtab="wind">Wind</button>
         <button class="loads-subtab" data-loadtab="seismic">Seismic</button>
         <button class="loads-subtab" data-loadtab="snow">Snow</button>
+        <button class="loads-subtab" data-loadtab="pdelta">P-delta</button>
       </div>
     </div>
 
@@ -361,6 +362,18 @@
           </label>
         </div>
         <button type="submit" class="btn-primary">Calculate Snow Loads</button>
+      </form>
+
+      <!-- P-DELTA FORM -->
+      <form id="pdeltaForm" class="loads-form glass hidden" data-loadform="pdelta">
+        <h3>P-delta Second-Order (ASCE 7-22)</h3>
+        <p class="loads-sub">Amplifies the first-order story drifts from your last 3D analysis using the stability coefficient θ = V·h / W.</p>
+        <div class="loads-grid">
+          <label>Base shear V (kN)<input type="number" id="pdV" value="100" step="1" min="0"/></label>
+          <label>Height h (m)<input type="number" id="pdH" value="8" step="0.5" min="0.5"/></label>
+          <label>Gravity load W (kN)<input type="number" id="pdW" value="8000" step="100" min="1"/></label>
+        </div>
+        <button type="submit" class="btn-primary">Amplify Drifts (P-delta)</button>
       </form>
     </div>
 

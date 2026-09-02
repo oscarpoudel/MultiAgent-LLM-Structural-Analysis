@@ -33,7 +33,7 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 ## Phase 4 — Analysis Integration (IN PROGRESS)
 - [x] **Wind/seismic on drawn 3D model** — Apply computed story forces as nodal loads on canvas model (equal or windward distribution), run 3D analysis, report story drifts. `app/tools/story_forces.py` + `/api/loads/apply-story-forces` + `/api/analyze/structure-with-loads`.
 - [x] **Story forces via chat/agent** — `apply_story_forces` canvas action (LLM + deterministic fallback) wired through `/api/chat` so users can ask the assistant to apply wind/seismic story forces to the drawn model and analyze.
-- [ ] **P-delta second-order analysis** — Story drift, P-delta moment amplification for frames.
+- [x] **P-delta second-order analysis** — ASCE 7-22 stability coefficient (θ = V·h/W) drift amplification + P-delta equivalent lateral forces for iterative analysis. `app/tools/pdelta.py` + `/api/loads/pdelta-amplify` + `/api/loads/pdelta-forces`.
 - [ ] **Response spectrum analysis** — Multi-mode (Cantilever) method for 3D structures.
 
 ## Phase 5 — Frontend & UX

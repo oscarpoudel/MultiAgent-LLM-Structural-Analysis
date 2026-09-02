@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
 from app.models import SeismicInputs, SlabInputs, SnowInputs, Structure3DInputs, WindInputs
+from app.tools.pdelta import amplify_story_drifts, pdelta_equivalent_lateral_forces
 from app.tools.seismic import calculate_seismic_base_shear
 from app.tools.slab import calculate_slab
 from app.tools.snow import calculate_snow_loads
@@ -111,5 +112,59 @@ def apply_story_forces_route():
         "load_results": load_results,
         "applied": outcome["applied"],
         "warnings": load_warnings + outcome["warnings"],
+        "model": outcome["inputs"].model_dump(mode="json"),
+    })
+
+
+@bp.post("/api/loads/pdelta-amplify")
+def pdelta_amplify():
+    """Amplify first-order story drifts using the ASCE 7 stability coefficient.
+
+    Body:
+    - story_drifts: list of {"drift_mm": float, "from_m"?, "to_m"?, "height_m"?}
+    - base_shear_kn: first-order base shear V (kN)
+    - height_m: total building height h (m)
+    - gravity_load_kn: total gravity load W (kN)
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        story_drifts = data.get("story_drifts") or []
+        base_shear_kn = float(data.get("base_shear_kn", 0.0))
+        height_m = float(data.get("height_m", 0.0))
+        gravity_load_kn = float(data.get("gravity_load_kn", 0.0))
+        result = amplify_story_drifts(story_drifts, base_shear_kn, height_m, gravity_load_kn)
+    except (TypeError, ValueError) as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+    return jsonify({"status": "ok", "results": result})
+
+
+@bp.post("/api/loads/pdelta-forces")
+def pdelta_forces():
+    """Compute P-delta equivalent lateral forces from first-order drifts and map
+    them onto a drawn 3D model as nodal loads (for iterative second-order analysis).
+
+    Body:
+    - model: drawn 3D structure (Structure3DInputs)
+    - story_drifts: list of {"from_m", "to_m", "drift_mm"}
+    - gravity_load_kn: total gravity load W (kN)
+    - direction: "x" | "y" (default "x")
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        from app.tools.opensees_3d import convert_3d_support_strings
+        model = Structure3DInputs.model_validate(convert_3d_support_strings(data.get("model") or {}))
+        story_drifts = data.get("story_drifts") or []
+        gravity_load_kn = float(data.get("gravity_load_kn", 0.0))
+        direction = str(data.get("direction", "x"))
+        outcome = pdelta_equivalent_lateral_forces(
+            model, story_drifts, gravity_load_kn, direction=direction
+        )
+    except (ValidationError, ValueError, KeyError) as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+
+    return jsonify({
+        "status": "ok",
+        "applied": outcome["applied"],
+        "warnings": outcome["warnings"],
         "model": outcome["inputs"].model_dump(mode="json"),
     })

@@ -1,10 +1,12 @@
 import { byId, $$ } from './dom.js';
 import { buildModel } from './analysis.js';
+import { S } from './state.js';
 import {
   calculateWindLoads,
   calculateSeismicLoads,
   calculateSnowLoads,
   analyzeStructureWithLoads,
+  pdeltaAmplify,
 } from './api.js';
 
 export function initLoads() {
@@ -22,6 +24,10 @@ export function initLoads() {
   byId('snowForm').addEventListener('submit', (e) => {
     e.preventDefault();
     runSnow();
+  });
+  byId('pdeltaForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    runPdelta();
   });
 }
 
@@ -80,6 +86,51 @@ async function runSnow() {
   const data = await calculateSnowLoads(inputs);
   if (data.status !== 'ok') return renderError(data);
   renderSnow(data.results);
+}
+
+function lastStoryDrifts() {
+  const results = S.results || {};
+  const story = results.story_response || {};
+  return Array.isArray(story.story_drifts) ? story.story_drifts : [];
+}
+
+async function runPdelta() {
+  const drifts = lastStoryDrifts();
+  const el = byId('loadsResults');
+  if (!drifts.length) {
+    el.innerHTML = `<div class="loads-error"><strong>No drifts available</strong><p>Run a 3D analysis with story forces first (use the Wind/Seismic "Apply to 3D Model" button), then come back to P-delta.</p></div>`;
+    return;
+  }
+  const payload = {
+    story_drifts: drifts,
+    base_shear_kn: num('pdV'),
+    height_m: num('pdH'),
+    gravity_load_kn: num('pdW'),
+  };
+  el.innerHTML = '<p class="placeholder">Computing P-delta amplification…</p>';
+  const data = await pdeltaAmplify(payload);
+  if (data.status !== 'ok') return renderError(data);
+  renderPdelta(data.results);
+}
+
+function renderPdelta(r) {
+  const el = byId('loadsResults');
+  const rows = (r.story_drifts || []).map((d) =>
+    `<tr><td>${d.from_m} → ${d.to_m}</td><td>${d.drift1_mm}</td><td>${d.drift2_mm ?? '—'}</td><td>${d.amplification ?? '—'}</td></tr>`
+  ).join('');
+  const stable = r.stable;
+  el.innerHTML = `
+    <h3>P-delta Second-Order — ${r.code_reference}</h3>
+    <div class="loads-props">
+      ${kv('Stability θ', r.theta)}
+      ${kv('Amplification', r.amplification_factor ?? '—')}
+      ${kv('Stable', stable ? 'Yes' : 'No')}
+      ${kv('Max drift 1st', r.max_drift1_mm, 'mm')}
+      ${kv('Max drift 2nd', r.max_drift2_mm ?? '—', 'mm')}
+    </div>
+    <h4>Story Drifts (1st → 2nd order)</h4>
+    <table class="loads-table"><thead><tr><th>Story</th><th>1st (mm)</th><th>2nd (mm)</th><th>Factor</th></tr></thead><tbody>${rows}</tbody></table>
+    ${warnings(r.warnings)}`;
 }
 
 function renderError(data) {

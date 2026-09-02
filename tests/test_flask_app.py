@@ -526,6 +526,51 @@ def test_snow_loads_route_rejects_invalid() -> None:
     assert response.get_json()["status"] == "error"
 
 
+def test_pdelta_amplify_route_returns_results() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/loads/pdelta-amplify",
+        json={
+            "story_drifts": [{"from_m": 0.0, "to_m": 4.0, "height_m": 4.0, "drift_mm": 10.0}],
+            "base_shear_kn": 100.0,
+            "height_m": 8.0,
+            "gravity_load_kn": 8000.0,
+        },
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["results"]["theta"] == 0.1
+    assert data["results"]["stable"] is True
+    assert data["results"]["story_drifts"][0]["drift2_mm"] > 10.0
+
+
+def test_pdelta_forces_route_returns_results() -> None:
+    client = app.test_client()
+    response = client.post(
+        "/api/loads/pdelta-forces",
+        json={
+            "model": {
+                "nodes": [
+                    {"id": 1, "x": 0, "y": 0, "z": 0},
+                    {"id": 2, "x": 6, "y": 0, "z": 0},
+                    {"id": 3, "x": 0, "y": 0, "z": 4},
+                    {"id": 4, "x": 6, "y": 0, "z": 4},
+                ],
+                "members": [],
+            },
+            "story_drifts": [{"from_m": 0.0, "to_m": 4.0, "height_m": 4.0, "drift_mm": 10.0}],
+            "gravity_load_kn": 8000.0,
+            "direction": "x",
+        },
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert len(data["applied"]) == 1
+    assert data["applied"][0]["force_kn"] > 0.0
+
+
 def test_beam_selection_route_returns_results() -> None:
     client = app.test_client()
     response = client.post(

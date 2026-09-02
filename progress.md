@@ -16,7 +16,6 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 ## Active TODO
 - [ ] Story drift visualization on canvas (color-code members by drift/utilization).
 - [ ] Export report to PDF.
-- [ ] P-delta second-order analysis.
 - [ ] Response spectrum (Cantilever) analysis.
 
 ## Completed
@@ -37,14 +36,20 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Wire story-force application into chat/canvas agent path: new `apply_story_forces` canvas action (LLM prompt + deterministic fallback in agents.py), chat route passes it through, frontend runCanvasAction -> analyzeStructureWithLoads -> renderResults. 4 new tests (route passthrough + wind/seismic/sections fallback routing). Test count 156 -> 160; coverage 78.92% -> 79.70%.
 - [x] Improve 3D solver test coverage: opensees_3d 79% -> 94% (added _run_static_combo FakeOps test covering load application, zero-factor case skipping, dangling-member skip, rigid-diaphragm constraints, plus story-response average-drift/zero-drift and single-level/single-node diaphragm noops). Test count 160 -> 165; coverage 79.70% -> 80.12% (crossed 80% target).
 - [x] Concrete design (ACI 318): app/tools/concrete.py — singly reinforced beam (flexure As/rho/phiMn + one-way shear Vc/stirrup spacing + bar count/spacing) and circular tied/spiral column (As, rho limits, phiPn, slenderness check). Fixed a stress-block-depth bug (a = As*fy/(0.85*f'c*b)) and a min-reinforcement bug (rho_design always >= rho_min). Routes /api/design/concrete-beam + /api/design/concrete-column. UI: Sections tab "Concrete Design" subtab (beam/column forms + results). 16 tool tests + 3 route tests. Test count 165 -> 184; coverage 80.12% -> 80.96%; concrete.py 100%.
+- [x] P-delta second-order analysis: app/tools/pdelta.py — ASCE 7-22 stability coefficient (theta = V*h/W) amplification of first-order story drifts (1/(1-theta), capped at theta 0.90, flagged at theta>=1) + P-delta equivalent lateral forces (W_above*drift/h_story) mapped onto the 3D model for iterative analysis. Routes /api/loads/pdelta-amplify + /api/loads/pdelta-forces. UI: Loads tab "P-delta" subtab (auto-uses last 3D drifts). 13 tool tests + 2 route tests. Test count 184 -> 199; coverage 80.96% -> 81.33%; pdelta.py 98%.
 
 ## Backlog Ideas
-- [ ] Concrete beam/column design (ACI 318).
-- [ ] P-delta second-order analysis.
+- [x] Concrete beam/column design (ACI 318).
+- [x] P-delta second-order analysis.
 - [ ] Response spectrum (Cantilever) analysis.
 - [ ] Story drift visualization on canvas.
 - [ ] Export report to PDF.
 - [ ] OpenAPI/Swagger auto-generation.
+- [ ] Timber design (NDS).
+- [ ] Foundation design (footing, pile).
+- [ ] Multi-hazard load combination optimizer.
+- [ ] Cost estimation from section selection.
+- [ ] Sensitivity analysis (parametric study).
 
 ## Blocked
 - None.
