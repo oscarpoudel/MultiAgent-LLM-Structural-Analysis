@@ -8,7 +8,7 @@ export function byId(id) {
 export function showTab(tabName) {
   $$('.tab').forEach((button) => button.classList.remove('active'));
 
-  const TAB_PAGES = ['tab-draw', 'tab-sections', 'tab-history'];
+  const TAB_PAGES = ['tab-draw', 'tab-loads', 'tab-sections', 'tab-history'];
   TAB_PAGES.forEach(id => {
     const page = document.getElementById(id);
     if (page) {

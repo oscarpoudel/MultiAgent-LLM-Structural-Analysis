@@ -15,7 +15,6 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 
 ## Active TODO
 - [ ] Improve test coverage for 3d solver (opensees_3d now ~79%; frame 93%, truss 95%).
-- [ ] Add load-determination UI (wind/seismic/snow forms + results panel).
 - [ ] Add section-selection UI (member group -> recommended section).
 - [ ] Wire story-force application into the chat/canvas agent path (currently REST-only).
 
@@ -32,6 +31,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Fix reaction sign in direct-stiffness frame/truss fallbacks (R = -penalty*U); add fallback + report tests.
 - [x] Integrate wind/seismic story forces onto drawn 3D model: app/tools/story_forces.py (equal/windward nodal distribution) + POST /api/loads/apply-story-forces + POST /api/analyze/structure-with-loads (end-to-end 3D analysis + story drifts) + tests.
 - [x] Test count 117 -> 156; coverage 68.1% -> 78.92%.
+- [x] Load-determination UI: Loads tab with Wind/Seismic/Snow subtabs, input forms, results panels (factors, story-force tables, warnings), and "Apply to 3D Model & Analyze" button wired to /api/analyze/structure-with-loads. app/static/js/loads.js + api.js + index.html + styles.css. Verified: 156 tests pass, all 3 endpoints return ok, page serves Loads tab.
 
 ## Backlog Ideas
 - [ ] Concrete beam/column design (ACI 318).

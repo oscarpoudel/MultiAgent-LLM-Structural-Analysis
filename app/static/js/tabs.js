@@ -1,6 +1,6 @@
 import { $$ } from './dom.js';
 
-const TAB_PAGES = ['tab-draw', 'tab-sections', 'tab-history'];
+const TAB_PAGES = ['tab-draw', 'tab-loads', 'tab-sections', 'tab-history'];
 
 export function initTabs({ onDrawTab }) {
   $$('.tab').forEach((tab) => {

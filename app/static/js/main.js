@@ -9,6 +9,7 @@ import { initHistory } from './history.js';
 import { initModals, showLoadModal, showMemberLoadModal, showSupportModal, showSlabModal } from './modals.js';
 import { initExports } from './results.js';
 import { initSections } from './sections.js';
+import { initLoads } from './loads.js';
 import { initTabs } from './tabs.js';
 import { initTheme } from './theme.js';
 import { initShortcuts } from './shortcuts.js';
@@ -163,10 +164,11 @@ function showDrawPage() {
     initExports();
     initChat();
     initSections();
-      initHistory();
-      initShortcuts();
-      initProjectAutosave();
-      drawPageInitialized = true;
+    initLoads();
+    initHistory();
+    initShortcuts();
+    initProjectAutosave();
+    drawPageInitialized = true;
     }
 
   // Wait for the browser to lay out the tab (it was display:none, now visible)

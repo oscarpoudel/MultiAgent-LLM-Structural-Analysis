@@ -20,6 +20,7 @@
     <span class="credit">Developed by <a href="https://www.oscarp.com.np" target="_blank" rel="noopener">Oscar</a></span>
     <nav class="tabs" id="mainTabs" style="display:none;">
       <button class="tab active" data-tab="draw">Draw</button>
+      <button class="tab" data-tab="loads">Loads</button>
       <button class="tab" data-tab="sections">Sections</button>
       <button class="tab" data-tab="history">History</button>
     </nav>
@@ -252,6 +253,121 @@
       <p class="placeholder">Draw a structure and run analysis to see results.</p>
     </div>
   </aside>
+</main>
+
+<!-- ============================================================ -->
+<!--  TAB: LOADS (Wind / Seismic / Snow determination)            -->
+<!-- ============================================================ -->
+<main id="tab-loads" class="page hidden">
+  <div class="loads-layout">
+    <div class="loads-head glass">
+      <h2>Load Determination</h2>
+      <p class="loads-sub">ASCE 7-22 wind, seismic &amp; snow — deterministic, no LLM.</p>
+      <div class="loads-subtabs">
+        <button class="loads-subtab active" data-loadtab="wind">Wind</button>
+        <button class="loads-subtab" data-loadtab="seismic">Seismic</button>
+        <button class="loads-subtab" data-loadtab="snow">Snow</button>
+      </div>
+    </div>
+
+    <div class="loads-body">
+      <!-- WIND FORM -->
+      <form id="windForm" class="loads-form glass" data-loadform="wind">
+        <h3>Wind (ASCE 7-22 MWFRS)</h3>
+        <div class="loads-grid">
+          <label>Basic wind speed (m/s)<input type="number" id="windSpeed" value="30" step="1" min="1"/></label>
+          <label>Exposure
+            <select id="windExposure">
+              <option value="A">A</option><option value="B">B</option>
+              <option value="C" selected>C</option><option value="D">D</option>
+            </select>
+          </label>
+          <label>Height h (m)<input type="number" id="windHeight" value="8" step="0.5" min="1"/></label>
+          <label>Length (m)<input type="number" id="windLength" value="6" step="0.5" min="1"/></label>
+          <label>Width (m)<input type="number" id="windWidth" value="6" step="0.5" min="1"/></label>
+          <label>Story height (m)<input type="number" id="windStory" value="4" step="0.5" min="1"/></label>
+          <label>Internal pressure
+            <select id="windInternal">
+              <option value="no_openings">No openings</option>
+              <option value="minor_openings" selected>Minor openings</option>
+              <option value="major_openings">Major openings</option>
+              <option value="all_openings">All openings</option>
+            </select>
+          </label>
+        </div>
+        <button type="submit" class="btn-primary">Calculate Wind Loads</button>
+      </form>
+
+      <!-- SEISMIC FORM -->
+      <form id="seismicForm" class="loads-form glass hidden" data-loadform="seismic">
+        <h3>Seismic (ASCE 7-22 ELF)</h3>
+        <div class="loads-grid">
+          <label>Sa(0.2s) (g)<input type="number" id="seisSa02" value="0.4" step="0.05" min="0.01"/></label>
+          <label>Sa(1s) (g)<input type="number" id="seisSa1" value="0.2" step="0.05" min="0.01"/></label>
+          <label>Site class
+            <select id="seisSite">
+              <option>A</option><option>B</option><option>C</option>
+              <option selected>D</option><option>E</option><option>F</option>
+            </select>
+          </label>
+          <label>Risk category
+            <select id="seisRisk">
+              <option>I</option><option selected>II</option><option>III</option><option>IV</option>
+            </select>
+          </label>
+          <label>Seismic weight W (kN)<input type="number" id="seisWeight" value="5000" step="100" min="1"/></label>
+          <label>Height (m)<input type="number" id="seisHeight" value="8" step="0.5" min="1"/></label>
+          <label>Structural system
+            <select id="seisSystem">
+              <option value="moment_frame" selected>Moment frame</option>
+              <option value="braced_frame">Braced frame</option>
+              <option value="shear_wall">Shear wall</option>
+              <option value="dual_system">Dual system</option>
+            </select>
+          </label>
+        </div>
+        <button type="submit" class="btn-primary">Calculate Base Shear</button>
+      </form>
+
+      <!-- SNOW FORM -->
+      <form id="snowForm" class="loads-form glass hidden" data-loadform="snow">
+        <h3>Snow (ASCE 7-22)</h3>
+        <div class="loads-grid">
+          <label>Ground snow load (kPa)<input type="number" id="snowPg" value="2" step="0.1" min="0"/></label>
+          <label>Exposure
+            <select id="snowExposure">
+              <option value="exposed">Exposed</option>
+              <option value="partially_shielded" selected>Partially shielded</option>
+              <option value="shielded">Shielded</option>
+            </select>
+          </label>
+          <label>Thermal
+            <select id="snowThermal">
+              <option value="heated" selected>Heated</option>
+              <option value="unheated">Unheated</option>
+            </select>
+          </label>
+          <label>Risk category
+            <select id="snowRisk">
+              <option>I</option><option selected>II</option><option>III</option><option>IV</option>
+            </select>
+          </label>
+          <label>Roof slope (deg)<input type="number" id="snowSlope" value="0" step="1" min="0" max="90"/></label>
+          <label>Drift
+            <select id="snowDrift">
+              <option value="false" selected>No</option>
+              <option value="true">Yes (simplified)</option>
+            </select>
+          </label>
+        </div>
+        <button type="submit" class="btn-primary">Calculate Snow Loads</button>
+      </form>
+    </div>
+
+    <div class="loads-results glass" id="loadsResults">
+      <p class="placeholder">Fill a form and calculate to see results.</p>
+    </div>
+  </div>
 </main>
 
 <!-- ============================================================ -->

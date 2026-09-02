@@ -99,7 +99,7 @@ export function buildCurrentAnalysisPayload() {
   return { analysis_type: analysisType, model: buildModel(analysisType) };
 }
 
-function buildModel(analysisType) {
+export function buildModel(analysisType) {
   if (analysisType === 'truss') {
     return {
       nodes: S.nodes.map((node) => ({ id: node.id, x: node.x, y: node.y, support: node.support === 'roller' ? 'roller_x' : (node.support || 'free') })),

@@ -53,3 +53,43 @@ export function exportReport(analysis) {
     }),
   });
 }
+
+export function calculateWindLoads(inputs) {
+  return jsonRequest('/api/loads/wind', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
+export function calculateSeismicLoads(inputs) {
+  return jsonRequest('/api/loads/seismic', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
+export function calculateSnowLoads(inputs) {
+  return jsonRequest('/api/loads/snow', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
+export function applyStoryForces(payload) {
+  return jsonRequest('/api/loads/apply-story-forces', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function analyzeStructureWithLoads(payload) {
+  return jsonRequest('/api/analyze/structure-with-loads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
