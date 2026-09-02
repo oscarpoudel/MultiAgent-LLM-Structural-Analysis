@@ -31,6 +31,7 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 
 ## Phase 4 — Analysis Integration (IN PROGRESS)
 - [x] **Wind/seismic on drawn 3D model** — Apply computed story forces as nodal loads on canvas model (equal or windward distribution), run 3D analysis, report story drifts. `app/tools/story_forces.py` + `/api/loads/apply-story-forces` + `/api/analyze/structure-with-loads`.
+- [x] **Story forces via chat/agent** — `apply_story_forces` canvas action (LLM + deterministic fallback) wired through `/api/chat` so users can ask the assistant to apply wind/seismic story forces to the drawn model and analyze.
 - [ ] **P-delta second-order analysis** — Story drift, P-delta moment amplification for frames.
 - [ ] **Response spectrum analysis** — Multi-mode (Cantilever) method for 3D structures.
 
@@ -41,7 +42,7 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [ ] **Export to PDF** — Render markdown report to PDF.
 
 ## Phase 6 — Quality & Ops
-- [ ] **Test coverage to 80%+** — Frame, truss, 3D solvers currently under 50%.
+- [x] **Test coverage to 80%+** — Overall 80.12%; 3D solver (opensees_3d) 94%, frame 93%, truss 95%.
 - [ ] **Cross-validation suite** — Compare OpenSeesPy vs closed-form vs direct stiffness on benchmark models.
 - [ ] **API docs auto-generation** — OpenAPI/Swagger from Pydantic models.
 - [ ] **CI coverage gate** — Block PRs below threshold.

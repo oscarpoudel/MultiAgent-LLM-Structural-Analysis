@@ -1,10 +1,11 @@
 import builtins
 
-from app.models import Load3D, LoadCombination3D, MemberLoad3D, Node3D, Structure3DInputs
+from app.models import Load3D, LoadCombination3D, Member3D, MemberLoad3D, Node3D, Support3D, Structure3DInputs
 from app.tools.opensees_3d import (
     _apply_rigid_diaphragms,
     _default_combinations,
     _member_axis,
+    _run_static_combo,
     _safe_vecxz,
     _story_response,
     analyze_3d_structure_opensees,
@@ -124,6 +125,202 @@ def test_apply_rigid_diaphragms_skips_base_and_uses_nearest_centroid_master() ->
     _apply_rigid_diaphragms(ops, inputs)
 
     assert ops.calls == [(3, 5, (3, 4))]
+
+
+def test_story_response_falls_back_to_average_drift_when_no_paired_nodes() -> None:
+    # Upper level has a node at a (x, y) not present at the lower level, so no
+    # paired drifts exist and the average-displacement drift is used instead.
+    inputs = Structure3DInputs(
+        nodes=[
+            Node3D(id=1, x=0, y=0, z=0),
+            Node3D(id=2, x=5, y=5, z=3),
+        ],
+        members=[],
+    )
+    displacements = {
+        1: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        2: [12.0, 16.0, 0.0, 0.0, 0.0, 0.0],
+    }
+
+    response = _story_response(inputs, displacements)
+
+    # No paired nodes -> drift from level averages: sqrt(12^2 + 16^2) = 20.0
+    assert response["story_drifts"][0]["drift_mm"] == 20.0
+
+
+def test_story_response_zero_drift_has_none_ratio() -> None:
+    inputs = Structure3DInputs(
+        nodes=[Node3D(id=1, x=0, y=0, z=0), Node3D(id=2, x=0, y=0, z=3)],
+        members=[],
+    )
+    displacements = {
+        1: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        2: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    }
+
+    response = _story_response(inputs, displacements)
+
+    assert response["story_drifts"][0]["drift_mm"] == 0.0
+    assert response["story_drifts"][0]["drift_ratio"] is None
+
+
+def test_apply_rigid_diaphragms_noop_with_single_level() -> None:
+    class FakeOps:
+        def __init__(self):
+            self.calls = []
+
+        def rigidDiaphragm(self, direction, master, *slaves):  # noqa: N802
+            self.calls.append((direction, master, slaves))
+
+    ops = FakeOps()
+    inputs = Structure3DInputs(
+        nodes=[Node3D(id=1, x=0, y=0, z=0), Node3D(id=2, x=6, y=0, z=0)],
+        members=[],
+    )
+
+    _apply_rigid_diaphragms(ops, inputs)
+
+    assert ops.calls == []
+
+
+def test_apply_rigid_diaphragms_skips_single_node_level() -> None:
+    class FakeOps:
+        def __init__(self):
+            self.calls = []
+
+        def rigidDiaphragm(self, direction, master, *slaves):  # noqa: N802
+            self.calls.append((direction, master, slaves))
+
+    ops = FakeOps()
+    inputs = Structure3DInputs(
+        nodes=[
+            Node3D(id=1, x=0, y=0, z=0),
+            Node3D(id=2, x=6, y=0, z=0),
+            Node3D(id=3, x=3, y=0, z=3),  # single node at upper level
+        ],
+        members=[],
+    )
+
+    _apply_rigid_diaphragms(ops, inputs)
+
+    assert ops.calls == []
+
+
+def test_run_static_combo_applies_loads_and_skips_zero_factor_cases() -> None:
+    class FakeOps:
+        def __init__(self):
+            self.calls = []
+            self.diaphragms = []
+
+        def wipe(self):
+            self.calls.append(("wipe",))
+
+        def model(self, *a):
+            self.calls.append(("model", a))
+
+        def node(self, nid, x, y, z):
+            self.calls.append(("node", nid))
+
+        def fix(self, nid, *dofs):
+            self.calls.append(("fix", nid, dofs))
+
+        def rigidDiaphragm(self, direction, master, *slaves):  # noqa: N802
+            self.diaphragms.append((direction, master, slaves))
+
+        def geomTransf(self, *a):
+            self.calls.append(("geomTransf", a))
+
+        def element(self, *a):
+            self.calls.append(("element", a))
+
+        def timeSeries(self, *a):
+            self.calls.append(("timeSeries", a))
+
+        def pattern(self, *a):
+            self.calls.append(("pattern", a))
+
+        def load(self, nid, *forces):
+            self.calls.append(("load", nid, forces))
+
+        def eleLoad(self, *a):
+            self.calls.append(("eleLoad", a))
+
+        def system(self, *a):
+            self.calls.append(("system", a))
+
+        def numberer(self, *a):
+            self.calls.append(("numberer", a))
+
+        def constraints(self, *a):
+            self.calls.append(("constraints", a))
+
+        def integrator(self, *a):
+            self.calls.append(("integrator", a))
+
+        def algorithm(self, *a):
+            self.calls.append(("algorithm", a))
+
+        def analysis(self, *a):
+            self.calls.append(("analysis", a))
+
+        def analyze(self, steps):
+            return 0
+
+        def reactions(self):
+            return None
+
+        def nodeDisp(self, nid):
+            return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+        def nodeReaction(self, nid):
+            return [1.0, 2.0, 3.0, 0.0, 0.0, 0.0]
+
+        def eleForce(self, mid):
+            return [1.0] * 12
+
+    inputs = Structure3DInputs(
+        nodes=[
+            Node3D(id=1, x=0, y=0, z=0, support=Support3D(ux=True, uy=True, uz=True, rx=True, ry=True, rz=True)),
+            Node3D(id=2, x=0, y=0, z=3),
+            Node3D(id=3, x=3, y=0, z=3),
+        ],
+        members=[
+            Member3D(id=1, start_node=1, end_node=2, group="column"),
+            Member3D(id=2, start_node=2, end_node=3, group="beam"),
+            Member3D(id=99, start_node=1, end_node=999),  # dangling end node -> skipped
+        ],
+        nodal_loads=[
+            Load3D(node_id=2, case="EX", fx_kn=10.0),
+            Load3D(node_id=2, case="L", fz_kn=-5.0),  # factor 0 in combo -> skipped
+        ],
+        member_loads=[
+            MemberLoad3D(member_id=2, case="EX", wy_kn_per_m=-2.0),
+            MemberLoad3D(member_id=2, case="L", wz_kn_per_m=-1.0),  # factor 0 -> skipped
+        ],
+        rigid_diaphragms=True,
+    )
+    combo = {"name": "EX only", "factors": {"EX": 1.0}}
+
+    ops = FakeOps()
+    result = _run_static_combo(ops, inputs, combo)
+
+    load_calls = [c for c in ops.calls if c[0] == "load"]
+    ele_calls = [c for c in ops.calls if c[0] == "eleLoad"]
+    # Only the EX nodal load is applied (L skipped with factor 0).
+    assert len(load_calls) == 1
+    assert load_calls[0][1] == 2
+    # Only the EX member load is applied (L skipped).
+    assert len(ele_calls) == 1
+    # Dangling member (end_node 999) is skipped -> only 2 elements created.
+    element_calls = [c for c in ops.calls if c[0] == "element"]
+    assert len(element_calls) == 2
+    # Rigid diaphragm applied at the upper level (nodes 2 and 3).
+    assert ops.diaphragms == [(3, 2, (3,))]
+    # Constraints use Transformation when diaphragms are on.
+    assert ("constraints", ("Transformation",)) in ops.calls
+    assert result["is_finite"] is True
+    assert result["num_members"] == 3
+    assert result["base_reactions"]["Fx_kn"] == 0.001
 
 
 def test_analyze_3d_reports_import_error_when_openseespy_unavailable(monkeypatch) -> None:

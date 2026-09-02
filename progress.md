@@ -14,7 +14,11 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - Never fabricate engineering results; all numbers come from deterministic solvers.
 
 ## Active TODO
-- [ ] Improve test coverage for 3d solver (opensees_3d now ~79%; frame 93%, truss 95%).
+- [ ] Story drift visualization on canvas (color-code members by drift/utilization).
+- [ ] Export report to PDF.
+- [ ] Concrete beam/column design (ACI 318).
+- [ ] P-delta second-order analysis.
+- [ ] Response spectrum (Cantilever) analysis.
 
 ## Completed
 - [x] Created progress.md.
@@ -32,6 +36,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Load-determination UI: Loads tab with Wind/Seismic/Snow subtabs, input forms, results panels (factors, story-force tables, warnings), and "Apply to 3D Model & Analyze" button wired to /api/analyze/structure-with-loads. app/static/js/loads.js + api.js + index.html + styles.css. Verified: 156 tests pass, all 3 endpoints return ok, page serves Loads tab.
 - [x] Section-selection UI: Sections tab gains a "Section Selection" subtab with Beam (Mu/Vu/Lb/Cb/fy) and Column (Pu/KL/fy) forms wired to /api/design/beam + /api/design/column. Renders selected section, properties, utilization, and top-5 candidate table. sections.js + api.js + index.html + styles.css. Verified: 156 tests pass, both endpoints return ok (W310X39 / W200X36), page serves selection UI.
 - [x] Wire story-force application into chat/canvas agent path: new `apply_story_forces` canvas action (LLM prompt + deterministic fallback in agents.py), chat route passes it through, frontend runCanvasAction -> analyzeStructureWithLoads -> renderResults. 4 new tests (route passthrough + wind/seismic/sections fallback routing). Test count 156 -> 160; coverage 78.92% -> 79.70%.
+- [x] Improve 3D solver test coverage: opensees_3d 79% -> 94% (added _run_static_combo FakeOps test covering load application, zero-factor case skipping, dangling-member skip, rigid-diaphragm constraints, plus story-response average-drift/zero-drift and single-level/single-node diaphragm noops). Test count 160 -> 165; coverage 79.70% -> 80.12% (crossed 80% target).
 
 ## Backlog Ideas
 - [ ] Concrete beam/column design (ACI 318).
