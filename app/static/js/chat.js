@@ -1,7 +1,8 @@
-import { sendChat } from './api.js';
+import { analyzeStructureWithLoads, sendChat } from './api.js';
 import {
   applyMemberGroupSections,
   buildCurrentAnalysisPayload,
+  buildModel,
   clearAnalysisResults,
   clearCurrentModel,
   drawSimpleBeam,
@@ -221,6 +222,41 @@ function runCanvasAction(canvasAction, pendingMessage) {
     } else {
       pendingMessage.querySelector('p').textContent = 'I could not find that load combination. Use the Load Combo dropdown or ask for EX/EY/default combo.';
     }
+  } else if (canvasAction.action === 'apply_story_forces') {
+    runApplyStoryForces(canvasAction.arguments, pendingMessage);
+  }
+}
+
+async function runApplyStoryForces(args, pendingMessage) {
+  const label = pendingMessage.querySelector('p');
+  const model = buildModel('3d_frame');
+  if (!model.nodes || model.nodes.length < 2) {
+    label.textContent = 'No 3D model to apply story forces to. Draw a 3D frame on the canvas first.';
+    return;
+  }
+  const loadType = args?.load_type === 'seismic' ? 'seismic' : 'wind';
+  const payload = {
+    load_type: loadType,
+    [loadType]: args?.[loadType] || {},
+    model,
+    direction: args?.direction || 'x',
+    distribution: args?.distribution || 'equal',
+  };
+  label.textContent = `Applying ${loadType} story forces and running 3D analysis…`;
+  try {
+    const data = await analyzeStructureWithLoads(payload);
+    if (data.status !== 'ok') {
+      label.textContent = `Story-force analysis failed: ${data.message || 'unknown error'}`;
+      return;
+    }
+    S.results = data.results;
+    lastAnalysisType = '3d_frame';
+    renderResults({ analysis_type: '3d_frame', results: data.results, report_markdown: data.report_markdown });
+    const drifts = data.results.story_response?.story_drifts || [];
+    const maxDrift = drifts.length ? Math.max(...drifts.map((d) => d.drift_mm || 0)) : 0;
+    label.textContent = `${loadType === 'wind' ? 'Wind' : 'Seismic'} story forces applied. Max story drift ${maxDrift.toFixed(2)} mm.`;
+  } catch (error) {
+    label.textContent = `Story-force analysis failed: ${error.message}`;
   }
 }
 

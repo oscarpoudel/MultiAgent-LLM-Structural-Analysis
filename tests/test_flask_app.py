@@ -204,6 +204,85 @@ def test_chat_route_returns_canvas_action_for_3d_frame_template(monkeypatch) -> 
     assert data["analysis"] is None
 
 
+def test_chat_route_returns_canvas_action_for_apply_story_forces(monkeypatch) -> None:
+    client = app.test_client()
+    from app.models import CanvasToolDecision
+
+    class StubCanvasAgent(StubAgentSystem):
+        def route_canvas_tool(self, message: str, context: dict | None = None):
+            return CanvasToolDecision(
+                action="apply_story_forces",
+                arguments={
+                    "load_type": "wind",
+                    "direction": "x",
+                    "distribution": "equal",
+                    "wind": {"basic_wind_speed_ms": 30.0, "height_m": 8.0},
+                },
+                message="I applied wind story forces to the model and ran the 3D analysis.",
+                confidence=0.85,
+            ), "llm"
+
+    import app.routes.analyze as analyze_mod
+    monkeypatch.setattr(analyze_mod, "_get_agent_system", lambda: StubCanvasAgent())
+
+    response = client.post("/api/chat", json={"message": "apply wind story forces to the model"})
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["response_type"] == "canvas_action"
+    assert data["canvas_action"]["action"] == "apply_story_forces"
+    assert data["canvas_action"]["arguments"]["load_type"] == "wind"
+    assert data["analysis"] is None
+
+
+def test_fallback_router_detects_wind_story_force_request() -> None:
+    from app.agents import StructuralAgentSystem
+
+    class FakeLLM:
+        def generate(self, *args, **kwargs):
+            return "I cannot determine a structured action."
+
+    agent = StructuralAgentSystem(FakeLLM())
+    decision, source = agent.route_canvas_tool("apply wind story forces to the model")
+
+    assert source == "fallback"
+    assert decision.action == "apply_story_forces"
+    assert decision.arguments["load_type"] == "wind"
+    assert decision.arguments["direction"] == "x"
+    assert decision.arguments["distribution"] == "equal"
+    assert "wind" in decision.arguments
+
+
+def test_fallback_router_detects_seismic_story_force_request() -> None:
+    from app.agents import StructuralAgentSystem
+
+    class FakeLLM:
+        def generate(self, *args, **kwargs):
+            return "I cannot determine a structured action."
+
+    agent = StructuralAgentSystem(FakeLLM())
+    decision, source = agent.route_canvas_tool("apply seismic story forces in the y direction")
+
+    assert source == "fallback"
+    assert decision.action == "apply_story_forces"
+    assert decision.arguments["load_type"] == "seismic"
+    assert decision.arguments["direction"] == "y"
+    assert "seismic" in decision.arguments
+
+
+def test_fallback_router_ignores_non_story_force_apply() -> None:
+    from app.agents import StructuralAgentSystem
+
+    class FakeLLM:
+        def generate(self, *args, **kwargs):
+            return "I cannot determine a structured action."
+
+    agent = StructuralAgentSystem(FakeLLM())
+    decision, _ = agent.route_canvas_tool("apply beam/column sections to the frame")
+
+    assert decision.action == "apply_member_group_sections"
+
+
 def test_chat_route_uses_contextual_chat_for_current_results_question(monkeypatch) -> None:
     client = app.test_client()
 

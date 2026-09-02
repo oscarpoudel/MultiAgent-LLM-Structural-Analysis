@@ -15,7 +15,6 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 
 ## Active TODO
 - [ ] Improve test coverage for 3d solver (opensees_3d now ~79%; frame 93%, truss 95%).
-- [ ] Wire story-force application into the chat/canvas agent path (currently REST-only).
 
 ## Completed
 - [x] Created progress.md.
@@ -32,6 +31,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Test count 117 -> 156; coverage 68.1% -> 78.92%.
 - [x] Load-determination UI: Loads tab with Wind/Seismic/Snow subtabs, input forms, results panels (factors, story-force tables, warnings), and "Apply to 3D Model & Analyze" button wired to /api/analyze/structure-with-loads. app/static/js/loads.js + api.js + index.html + styles.css. Verified: 156 tests pass, all 3 endpoints return ok, page serves Loads tab.
 - [x] Section-selection UI: Sections tab gains a "Section Selection" subtab with Beam (Mu/Vu/Lb/Cb/fy) and Column (Pu/KL/fy) forms wired to /api/design/beam + /api/design/column. Renders selected section, properties, utilization, and top-5 candidate table. sections.js + api.js + index.html + styles.css. Verified: 156 tests pass, both endpoints return ok (W310X39 / W200X36), page serves selection UI.
+- [x] Wire story-force application into chat/canvas agent path: new `apply_story_forces` canvas action (LLM prompt + deterministic fallback in agents.py), chat route passes it through, frontend runCanvasAction -> analyzeStructureWithLoads -> renderResults. 4 new tests (route passthrough + wind/seismic/sections fallback routing). Test count 156 -> 160; coverage 78.92% -> 79.70%.
 
 ## Backlog Ideas
 - [ ] Concrete beam/column design (ACI 318).

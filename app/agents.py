@@ -160,7 +160,7 @@ class StructuralAgentSystem:
                     "You route user chat to canvas tools. Return compact JSON only with keys: "
                     "action, arguments, message, confidence. Available actions: none, clear_canvas, "
                     "clear_analysis, draw_simple_beam, draw_3d_frame_template, apply_member_group_sections, "
-                    "set_rigid_diaphragm, set_load_combination. Use none for ordinary conversation or conceptual questions. "
+                    "set_rigid_diaphragm, set_load_combination, apply_story_forces. Use none for ordinary conversation or conceptual questions. "
                     "Use clear_canvas only when the user wants the drawing/canvas/model cleared or reset. "
                     "Use clear_analysis when the user wants only analysis results cleared. "
                     "Use draw_simple_beam when the user asks to draw/create a simply supported beam. "
@@ -168,6 +168,10 @@ class StructuralAgentSystem:
                     "Use apply_member_group_sections when the user asks to assign/apply beam and column sections. "
                     "Use set_rigid_diaphragm with {enabled: true/false} when the user asks to toggle rigid diaphragms. "
                     "Use set_load_combination with {name: string} when the user asks to change load combination. "
+                    "Use apply_story_forces when the user asks to apply wind or seismic story forces to the current model. "
+                    "Its arguments are {load_type: 'wind'|'seismic', direction: 'x'|'y', distribution: 'equal'|'windward', "
+                    "wind: {basic_wind_speed_ms, exposure, height_m, length_m, width_m, story_height_m, internal_pressure}, "
+                    "seismic: {spectral_accel_sd, spectral_accel_1s, site_class, risk_category, building_weight_kn, height_m, structural_system}}. "
                     "For draw_simple_beam arguments use: span_m number, udl_kn_per_m number if present, "
                     "point_loads array of {magnitude_kn, position_m}. Convert midpoint/middle to span_m/2."
                 ),
@@ -387,6 +391,7 @@ class StructuralAgentSystem:
             if decision.action not in {
                 "none", "clear_canvas", "clear_analysis", "draw_simple_beam", "draw_3d_frame_template",
                 "apply_member_group_sections", "set_rigid_diaphragm", "set_load_combination",
+                "apply_story_forces",
             }:
                 return fallback, "fallback"
             if decision.action == "set_rigid_diaphragm" and not isinstance(decision.arguments.get("enabled"), bool):
@@ -446,6 +451,9 @@ class StructuralAgentSystem:
                 name = aliases[name]
             return CanvasToolDecision(action="set_load_combination", arguments={"name": name}, message="I updated the active load combination.", confidence=0.75)
 
+        if "story force" in text or "story forces" in text or "apply wind" in text or "apply seismic" in text or "apply eq" in text or "apply earthquake" in text:
+            return self._story_forces_decision(text)
+
         if any(phrase in text for phrase in ("apply beam column", "apply beam/column", "assign sections", "apply sections", "beam column sections")):
             return CanvasToolDecision(action="apply_member_group_sections", message="I applied preliminary beam, column, and brace section properties.", confidence=0.9)
 
@@ -469,6 +477,47 @@ class StructuralAgentSystem:
             )
 
         return CanvasToolDecision()
+
+    def _story_forces_decision(self, text: str) -> CanvasToolDecision:
+        load_type = "seismic" if any(t in text for t in ("seismic", "earthquake", "eq", "lateral")) else "wind"
+        direction = "y" if "y direction" in text or "transverse" in text else "x"
+        distribution = "windward" if "windward" in text else "equal"
+        arguments: dict[str, Any] = {
+            "load_type": load_type,
+            "direction": direction,
+            "distribution": distribution,
+        }
+        if load_type == "wind":
+            speed = self._find_number(text, [r"([0-9.]+)\s*m/s"], 30.0)
+            height = self._find_number(text, [r"([0-9.]+)\s*m"], 8.0)
+            arguments["wind"] = {
+                "basic_wind_speed_ms": speed,
+                "exposure": "C",
+                "height_m": height,
+                "length_m": 6.0,
+                "width_m": 6.0,
+                "story_height_m": 4.0,
+                "internal_pressure": "minor_openings",
+            }
+        else:
+            weight = self._find_number(text, [r"([0-9.]+)\s*kn"], 5000.0)
+            height = self._find_number(text, [r"([0-9.]+)\s*m"], 8.0)
+            arguments["seismic"] = {
+                "spectral_accel_sd": 0.4,
+                "spectral_accel_1s": 0.2,
+                "site_class": "D",
+                "risk_category": "II",
+                "building_weight_kn": weight,
+                "height_m": height,
+                "structural_system": "moment_frame",
+            }
+        label = "wind" if load_type == "wind" else "seismic"
+        return CanvasToolDecision(
+            action="apply_story_forces",
+            arguments=arguments,
+            message=f"I applied {label} story forces to the model and ran the 3D analysis.",
+            confidence=0.85,
+        )
 
     def analyze(self, prompt: str) -> AgentResult:
         log.info("agent_analyze_start", extra={"prompt_len": len(prompt)})
