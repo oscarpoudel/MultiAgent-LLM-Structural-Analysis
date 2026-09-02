@@ -229,16 +229,16 @@ def _analyze_truss_direct_stiffness(inputs: TrussInputs, fallback_reason: str = 
     for node in inputs.nodes:
         if node.support != "free":
             idx = id_to_idx[node.id]
-            # R = K_orig * U - F (but we used penalty, so R ≈ penalty * U for constrained DOFs)
+            # Penalty reaction: R = -penalty * U for constrained DOFs (resists displacement)
             rx = 0.0
             ry = 0.0
             if node.support in ("pin", "fixed"):
-                rx = penalty * U[2*idx] / 1_000.0
-                ry = penalty * U[2*idx+1] / 1_000.0
+                rx = -penalty * U[2*idx] / 1_000.0
+                ry = -penalty * U[2*idx+1] / 1_000.0
             elif node.support == "roller_x":
-                ry = penalty * U[2*idx+1] / 1_000.0
+                ry = -penalty * U[2*idx+1] / 1_000.0
             elif node.support == "roller_y":
-                rx = penalty * U[2*idx] / 1_000.0
+                rx = -penalty * U[2*idx] / 1_000.0
             reactions[str(node.id)] = {
                 "rx_kn": round(rx, 4),
                 "ry_kn": round(ry, 4),

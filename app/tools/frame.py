@@ -313,12 +313,12 @@ def _analyze_frame_direct_stiffness(inputs: FrameInputs, fallback_reason: str = 
             idx = id_to_idx[node.id]
             rx = ry = mz = 0.0
             if node.support in ("pin", "fixed"):
-                rx = penalty * U[3*idx] / 1_000.0
-                ry = penalty * U[3*idx+1] / 1_000.0
+                rx = -penalty * U[3*idx] / 1_000.0
+                ry = -penalty * U[3*idx+1] / 1_000.0
             elif node.support == "roller":
-                ry = penalty * U[3*idx+1] / 1_000.0
+                ry = -penalty * U[3*idx+1] / 1_000.0
             if node.support == "fixed":
-                mz = penalty * U[3*idx+2] / 1_000.0
+                mz = -penalty * U[3*idx+2] / 1_000.0
             reactions[str(node.id)] = {
                 "rx_kn": round(rx, 4),
                 "ry_kn": round(ry, 4),
