@@ -14,7 +14,6 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - Never fabricate engineering results; all numbers come from deterministic solvers.
 
 ## Active TODO
-- [ ] Cross-validation suite — compare OpenSeesPy vs closed-form vs direct stiffness on benchmark models.
 - [ ] OpenAPI/Swagger auto-generation + CI coverage gate.
 
 ## Completed
@@ -22,6 +21,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Story drift visualization: "Story drift" display toggle + legend in canvas toolbar; members color-coded green/amber/red by drift utilization vs 2% limit (drift_ratio_delta_over_h / 0.02). Added explicit drift_ratio_delta_over_h field to opensees_3d story response (kept h/delta drift_ratio for compat). Loads-tab 3D analyses now store results in S.results and auto-enable the overlay.
 - [x] Export report to PDF: app/tools/pdf_export.py — dependency-free PDF 1.4 writer (Helvetica, paginated, markdown tables/headings/code stripped, xref offsets verified). POST /api/export/pdf + "PDF" button in results panel. 4 tests. Test count 206 -> 210; coverage 81.33% -> 81.89%.
 - [x] Fixed pre-existing lint debt (ruff clean across app+tests: import order, unused var, N802 noqa on OpenSeesPy API mirrors).
+- [x] Cross-validation suite: app/tools/cross_validation.py — compares closed-form vs OpenSeesPy FEM vs direct-stiffness fallback on beam/truss/frame benchmarks (20 signed checks, 2% rel tol). POST /api/loads/cross-validation. 6 tests. **Caught and fixed 2 real bugs:** (1) truss OpenSees force extraction had a sign error (tension reported as compression) — eleForce returns global end forces = -member force, so axial = -(fx1·c+fy1·s); (2) frame direct-stiffness member forces omitted the fixed-end force contribution (moments off by wL²/12) — now FEF + k·u. Test count 210 -> 216; coverage 81.89% -> 82.42%.
 - [x] Created progress.md.
 - [x] Checkpoint: lint/import-ordering pass (all tests green).
 - [x] Wrote docs/Roadmap.md with prioritized roadmap.

@@ -221,6 +221,7 @@ def _analyze_frame_direct_stiffness(inputs: FrameInputs, fallback_reason: str = 
             "i": i, "j": j,
             "L": L, "c": c, "s": s,
             "T": T, "k_local": k_local,
+            "fef_local": np.zeros(6),
         })
 
     # Apply nodal loads
@@ -242,7 +243,8 @@ def _analyze_frame_direct_stiffness(inputs: FrameInputs, fallback_reason: str = 
                 i_idx = md["i"]
                 j_idx = md["j"]
 
-                # Fixed-end forces in local coords (vertical UDL)
+                # Equivalent nodal loads in local coords (negative of the
+                # fixed-end forces) for a vertical UDL.
                 f_local = np.array([
                     0,
                     -w_n * L / 2.0,
@@ -251,6 +253,10 @@ def _analyze_frame_direct_stiffness(inputs: FrameInputs, fallback_reason: str = 
                     -w_n * L / 2.0,
                     w_n * L**2 / 12.0,
                 ])
+
+                # Store the fixed-end forces so member end forces can be
+                # recovered as FEF + k_local @ u_local.
+                md["fef_local"] += -f_local
 
                 # Transform to global
                 T = md["T"]
@@ -339,7 +345,8 @@ def _analyze_frame_direct_stiffness(inputs: FrameInputs, fallback_reason: str = 
             U[3*j], U[3*j+1], U[3*j+2],
         ])
         u_local = T @ u_global
-        f_local = k_local @ u_local
+        # Member end forces = fixed-end forces + stiffness * local displacement.
+        f_local = md["fef_local"] + k_local @ u_local
 
         member_forces[str(m.id)] = {
             "axial_start_kn": round(f_local[0] / 1_000.0, 4),

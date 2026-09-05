@@ -106,8 +106,10 @@ def _analyze_truss_opensees(inputs: TrussInputs) -> dict:
             length = math.sqrt(dx**2 + dy**2)
             cos_a = dx / length if length > 0 else 0
             sin_a = dy / length if length > 0 else 0
-            # Project local force
-            axial_n = forces[0] * cos_a + forces[1] * sin_a
+            # OpenSees eleForce returns global end forces equal to the negative of
+            # the force the member exerts on the nodes. Project the node-1 force
+            # onto the member axis and negate to get tension-positive axial force.
+            axial_n = -(forces[0] * cos_a + forces[1] * sin_a)
             axial_kn = axial_n / 1_000.0
 
             member_forces[str(member.id)] = {

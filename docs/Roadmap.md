@@ -44,7 +44,7 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 
 ## Phase 6 — Quality & Ops
 - [x] **Test coverage to 80%+** — Overall 80.12%; 3D solver (opensees_3d) 94%, frame 93%, truss 95%.
-- [ ] **Cross-validation suite** — Compare OpenSeesPy vs closed-form vs direct stiffness on benchmark models.
+- [x] **Cross-validation suite** — Compare OpenSeesPy vs closed-form vs direct stiffness on benchmark models. `app/tools/cross_validation.py` + `/api/loads/cross-validation`. 20 signed checks across beam/truss/frame; caught and fixed a truss force sign bug and a frame fixed-end-force omission.
 - [ ] **API docs auto-generation** — OpenAPI/Swagger from Pydantic models.
 - [ ] **CI coverage gate** — Block PRs below threshold.
 

@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
 from app.models import SeismicInputs, SlabInputs, SnowInputs, Structure3DInputs, WindInputs
+from app.tools.cross_validation import run_cross_validation
 from app.tools.pdelta import amplify_story_drifts, pdelta_equivalent_lateral_forces
 from app.tools.response_spectrum import response_spectrum_analysis
 from app.tools.seismic import calculate_seismic_base_shear
@@ -191,3 +192,14 @@ def pdelta_forces():
         "warnings": outcome["warnings"],
         "model": outcome["inputs"].model_dump(mode="json"),
     })
+
+
+@bp.post("/api/loads/cross-validation")
+def cross_validation():
+    """Run the independent-solver cross-validation suite on benchmark models.
+
+    Compares closed-form, OpenSeesPy FEM, and direct-stiffness fallback
+    solvers and reports per-quantity agreement. Deterministic.
+    """
+    result = run_cross_validation()
+    return jsonify({"status": "ok", "results": result})
