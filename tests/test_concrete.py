@@ -177,5 +177,4 @@ def test_design_concrete_column_huge_load_exceeds_max_steel() -> None:
     )
 
     assert any("exceeds 8%" in w for w in result["warnings"])
-    a_g = math.pi / 4.0 * 400.0**2
     assert result["rho_design"] <= 0.08 + 1e-9

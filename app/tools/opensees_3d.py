@@ -100,6 +100,7 @@ def _story_response(inputs: Structure3DInputs, nodal_displacements: dict[int, li
             "height_m": height,
             "drift_mm": drift,
             "drift_ratio": (height * 1000.0 / drift) if drift > 1e-9 else None,
+            "drift_ratio_delta_over_h": drift / (height * 1000.0) if height > 0 else None,
         })
 
     return {"levels": levels, "story_drifts": story_drifts}

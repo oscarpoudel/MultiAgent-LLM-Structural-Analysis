@@ -242,7 +242,7 @@ function initViewButtons() {
 }
 
 function initDisplayToggles() {
-  ['showGrid', 'showLabels', 'showDeformed', 'showForces'].forEach((id) => {
+  ['showGrid', 'showLabels', 'showDeformed', 'showForces', 'showDrift'].forEach((id) => {
     const el = byId(id);
     if (el) el.addEventListener('change', triggerRedraw);
   });

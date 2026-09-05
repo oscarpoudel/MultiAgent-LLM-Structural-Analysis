@@ -34,13 +34,13 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [x] **Wind/seismic on drawn 3D model** — Apply computed story forces as nodal loads on canvas model (equal or windward distribution), run 3D analysis, report story drifts. `app/tools/story_forces.py` + `/api/loads/apply-story-forces` + `/api/analyze/structure-with-loads`.
 - [x] **Story forces via chat/agent** — `apply_story_forces` canvas action (LLM + deterministic fallback) wired through `/api/chat` so users can ask the assistant to apply wind/seismic story forces to the drawn model and analyze.
 - [x] **P-delta second-order analysis** — ASCE 7-22 stability coefficient (θ = V·h/W) drift amplification + P-delta equivalent lateral forces for iterative analysis. `app/tools/pdelta.py` + `/api/loads/pdelta-amplify` + `/api/loads/pdelta-forces`.
-- [ ] **Response spectrum analysis** — Multi-mode (Cantilever) method for 3D structures.
+- [x] **Response spectrum analysis** — Multi-mode (Cantilever) method for 3D structures. `app/tools/response_spectrum.py` + `/api/loads/response-spectrum` + Loads tab "Response Spectrum" subtab. ASCE 7-22 design spectrum, lumped-mass modal analysis (SRSS) from vertical-member story stiffness.
 
 ## Phase 5 — Frontend & UX
 - [x] **Load determination UI** — Loads tab: wind/seismic/snow forms, results panels with code references, story-force tables, and apply-to-3D-model + analyze.
 - [x] **Section selection UI** — Sections tab "Section Selection" subtab: beam (Mu/Vu/Lb/Cb/fy) and column (Pu/KL/fy) forms, recommended section + top-5 candidates.
-- [ ] **Story drift visualization** — Color-code members by drift/utilization.
-- [ ] **Export to PDF** — Render markdown report to PDF.
+- [x] **Story drift visualization** — Color-code members by drift/utilization vs 2% limit (canvas "Story drift" toggle + legend).
+- [x] **Export to PDF** — Render markdown report to PDF (dependency-free PDF 1.4 writer, `/api/export/pdf`).
 
 ## Phase 6 — Quality & Ops
 - [x] **Test coverage to 80%+** — Overall 80.12%; 3D solver (opensees_3d) 94%, frame 93%, truss 95%.

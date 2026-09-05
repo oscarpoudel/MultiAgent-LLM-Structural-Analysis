@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from app.models import SeismicInputs, SlabInputs, SnowInputs, Structure3DInputs, WindInputs
 from app.tools.pdelta import amplify_story_drifts, pdelta_equivalent_lateral_forces
+from app.tools.response_spectrum import response_spectrum_analysis
 from app.tools.seismic import calculate_seismic_base_shear
 from app.tools.slab import calculate_slab
 from app.tools.snow import calculate_snow_loads
@@ -53,6 +54,28 @@ def seismic_loads():
     except ValidationError as exc:
         return jsonify({"status": "error", "message": "Invalid seismic inputs", "details": exc.errors()}), 400
     result = calculate_seismic_base_shear(inputs)
+    return jsonify({"status": "ok", "results": result})
+
+
+@bp.post("/api/loads/response-spectrum")
+def response_spectrum_loads():
+    """Run deterministic lumped-mass response-spectrum analysis on a 3D model."""
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        from app.tools.opensees_3d import convert_3d_support_strings
+
+        model = Structure3DInputs.model_validate(convert_3d_support_strings(data.get("model") or {}))
+        result = response_spectrum_analysis(
+            model,
+            float(data["building_weight_kn"]),
+            float(data["sds"]),
+            float(data["sd1"]),
+            direction=str(data.get("direction", "x")).lower(),
+            num_modes=int(data.get("num_modes", 10)),
+            long_period_s=float(data.get("long_period_s", 8.0)),
+        )
+    except (ValidationError, ValueError, TypeError, KeyError) as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
     return jsonify({"status": "ok", "results": result})
 
 

@@ -1,6 +1,6 @@
 import builtins
 
-from app.models import Load3D, LoadCombination3D, Member3D, MemberLoad3D, Node3D, Support3D, Structure3DInputs
+from app.models import Load3D, LoadCombination3D, Member3D, MemberLoad3D, Node3D, Structure3DInputs, Support3D
 from app.tools.opensees_3d import (
     _apply_rigid_diaphragms,
     _default_combinations,
@@ -227,13 +227,13 @@ def test_run_static_combo_applies_loads_and_skips_zero_factor_cases() -> None:
         def rigidDiaphragm(self, direction, master, *slaves):  # noqa: N802
             self.diaphragms.append((direction, master, slaves))
 
-        def geomTransf(self, *a):
+        def geomTransf(self, *a):  # noqa: N802 - mirrors OpenSeesPy API method name
             self.calls.append(("geomTransf", a))
 
         def element(self, *a):
             self.calls.append(("element", a))
 
-        def timeSeries(self, *a):
+        def timeSeries(self, *a):  # noqa: N802 - mirrors OpenSeesPy API method name
             self.calls.append(("timeSeries", a))
 
         def pattern(self, *a):
@@ -242,7 +242,7 @@ def test_run_static_combo_applies_loads_and_skips_zero_factor_cases() -> None:
         def load(self, nid, *forces):
             self.calls.append(("load", nid, forces))
 
-        def eleLoad(self, *a):
+        def eleLoad(self, *a):  # noqa: N802 - mirrors OpenSeesPy API method name
             self.calls.append(("eleLoad", a))
 
         def system(self, *a):
@@ -269,13 +269,13 @@ def test_run_static_combo_applies_loads_and_skips_zero_factor_cases() -> None:
         def reactions(self):
             return None
 
-        def nodeDisp(self, nid):
+        def nodeDisp(self, nid):  # noqa: N802 - mirrors OpenSeesPy API method name
             return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-        def nodeReaction(self, nid):
+        def nodeReaction(self, nid):  # noqa: N802 - mirrors OpenSeesPy API method name
             return [1.0, 2.0, 3.0, 0.0, 0.0, 0.0]
 
-        def eleForce(self, mid):
+        def eleForce(self, mid):  # noqa: N802 - mirrors OpenSeesPy API method name
             return [1.0] * 12
 
     inputs = Structure3DInputs(

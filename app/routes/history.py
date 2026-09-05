@@ -8,6 +8,7 @@ import json
 from flask import Blueprint, Response, jsonify, request
 
 from app.logging_config import get_logger
+from app.tools.pdf_export import markdown_report_to_pdf
 from app.tools.report import format_engineering_report
 
 bp = Blueprint("history", __name__)
@@ -129,4 +130,23 @@ def export_report():
         report,
         mimetype="text/markdown",
         headers={"Content-Disposition": "attachment; filename=analysis_report.md"},
+    )
+
+
+@bp.post("/api/export/pdf")
+def export_pdf():
+    """Export a Markdown engineering report as a downloadable PDF."""
+    data = request.get_json(silent=True) or {}
+    analysis = data.get("analysis", {}) if isinstance(data.get("analysis"), dict) else {}
+    report = data.get("report_markdown") or analysis.get("report_markdown") or ""
+    if not report:
+        return jsonify({"status": "error", "message": "No report to export"}), 400
+    try:
+        document = markdown_report_to_pdf(str(report))
+    except ValueError as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+    return Response(
+        document,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=analysis_report.pdf"},
     )

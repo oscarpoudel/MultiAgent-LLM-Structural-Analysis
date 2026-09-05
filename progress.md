@@ -14,11 +14,14 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - Never fabricate engineering results; all numbers come from deterministic solvers.
 
 ## Active TODO
-- [ ] Story drift visualization on canvas (color-code members by drift/utilization).
-- [ ] Export report to PDF.
-- [ ] Response spectrum (Cantilever) analysis.
+- [ ] Cross-validation suite — compare OpenSeesPy vs closed-form vs direct stiffness on benchmark models.
+- [ ] OpenAPI/Swagger auto-generation + CI coverage gate.
 
 ## Completed
+- [x] Response spectrum (Cantilever) analysis: app/tools/response_spectrum.py — ASCE 7-22 design spectrum (Eq. 11.4-1..6), lumped floor-mass shear-building/cantilever idealization built from vertical members (3EI/L³ free, 12EI/L³ with rigid diaphragms), numpy eigendecomposition, modal participation factors, SRSS combination of modal floor forces/shears/displacements, drift ratios. POST /api/loads/response-spectrum. Loads tab "Response Spectrum" subtab (SDS/SD1/W/direction/modes/TL) wired to the current 3D model. Fixed ASCE 7 Ts bug in seismic.py (was SDS/SD1, now SD1/SDS). 6 tool+route tests. Test count 199 -> 206.
+- [x] Story drift visualization: "Story drift" display toggle + legend in canvas toolbar; members color-coded green/amber/red by drift utilization vs 2% limit (drift_ratio_delta_over_h / 0.02). Added explicit drift_ratio_delta_over_h field to opensees_3d story response (kept h/delta drift_ratio for compat). Loads-tab 3D analyses now store results in S.results and auto-enable the overlay.
+- [x] Export report to PDF: app/tools/pdf_export.py — dependency-free PDF 1.4 writer (Helvetica, paginated, markdown tables/headings/code stripped, xref offsets verified). POST /api/export/pdf + "PDF" button in results panel. 4 tests. Test count 206 -> 210; coverage 81.33% -> 81.89%.
+- [x] Fixed pre-existing lint debt (ruff clean across app+tests: import order, unused var, N802 noqa on OpenSeesPy API mirrors).
 - [x] Created progress.md.
 - [x] Checkpoint: lint/import-ordering pass (all tests green).
 - [x] Wrote docs/Roadmap.md with prioritized roadmap.
@@ -41,9 +44,9 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 ## Backlog Ideas
 - [x] Concrete beam/column design (ACI 318).
 - [x] P-delta second-order analysis.
-- [ ] Response spectrum (Cantilever) analysis.
-- [ ] Story drift visualization on canvas.
-- [ ] Export report to PDF.
+- [x] Response spectrum (Cantilever) analysis.
+- [x] Story drift visualization on canvas.
+- [x] Export report to PDF.
 - [ ] OpenAPI/Swagger auto-generation.
 - [ ] Timber design (NDS).
 - [ ] Foundation design (footing, pile).

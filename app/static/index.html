@@ -209,6 +209,10 @@
       <input type="range" id="deformScale" min="1" max="1000" value="100" style="flex:1;">
     </div>
     <label class="chk"><input type="checkbox" id="showForces"/> Forces</label>
+    <label class="chk"><input type="checkbox" id="showDrift"/> Story drift</label>
+    <div class="drift-legend" aria-label="Story drift utilization legend">
+      <span><i class="drift-low"></i>&lt; 50%</span><span><i class="drift-mid"></i>50-100%</span><span><i class="drift-high"></i>&gt; 100%</span>
+    </div>
     <button id="settingsBtn" class="btn-xs" style="margin-top:4px; width:100%;">⚙ Settings</button>
     <hr class="toolbar-sep"/>
     <p class="toolbar-title">Properties</p>
@@ -247,6 +251,7 @@
       <div class="rp-actions">
         <button class="btn-xs" id="exportCsvBtn">CSV</button>
         <button class="btn-xs" id="exportMdBtn">Report</button>
+        <button class="btn-xs" id="exportPdfBtn">PDF</button>
       </div>
     </div>
     <div id="rpContent" class="rp-content">
@@ -266,6 +271,7 @@
       <div class="loads-subtabs">
         <button class="loads-subtab active" data-loadtab="wind">Wind</button>
         <button class="loads-subtab" data-loadtab="seismic">Seismic</button>
+        <button class="loads-subtab" data-loadtab="spectrum">Response Spectrum</button>
         <button class="loads-subtab" data-loadtab="snow">Snow</button>
         <button class="loads-subtab" data-loadtab="pdelta">P-delta</button>
       </div>
@@ -328,6 +334,23 @@
           </label>
         </div>
         <button type="submit" class="btn-primary">Calculate Base Shear</button>
+      </form>
+
+      <!-- RESPONSE SPECTRUM FORM -->
+      <form id="spectrumForm" class="loads-form glass hidden" data-loadform="spectrum">
+        <h3>Response Spectrum (ASCE 7-22)</h3>
+        <p class="loads-sub">Lumped floor-mass modal analysis using story stiffness from the vertical members in the current 3D model.</p>
+        <div class="loads-grid">
+          <label>SDS (g)<input type="number" id="rsSds" value="0.8" step="0.05" min="0.01"/></label>
+          <label>SD1 (g)<input type="number" id="rsSd1" value="0.4" step="0.05" min="0.01"/></label>
+          <label>Seismic weight W (kN)<input type="number" id="rsWeight" value="5000" step="100" min="1"/></label>
+          <label>Direction
+            <select id="rsDirection"><option value="x" selected>X</option><option value="y">Y</option></select>
+          </label>
+          <label>Maximum modes<input type="number" id="rsModes" value="10" step="1" min="1"/></label>
+          <label>Long-period TL (s)<input type="number" id="rsTl" value="8" step="0.5" min="0.5"/></label>
+        </div>
+        <button type="submit" class="btn-primary">Analyze Current 3D Model</button>
       </form>
 
       <!-- SNOW FORM -->

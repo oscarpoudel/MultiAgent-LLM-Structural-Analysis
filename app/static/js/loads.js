@@ -1,9 +1,11 @@
 import { byId, $$ } from './dom.js';
 import { buildModel } from './analysis.js';
 import { S } from './state.js';
+import { triggerRedraw } from './canvas3d/scene.js';
 import {
   calculateWindLoads,
   calculateSeismicLoads,
+  calculateResponseSpectrum,
   calculateSnowLoads,
   analyzeStructureWithLoads,
   pdeltaAmplify,
@@ -24,6 +26,10 @@ export function initLoads() {
   byId('snowForm').addEventListener('submit', (e) => {
     e.preventDefault();
     runSnow();
+  });
+  byId('spectrumForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    runSpectrum();
   });
   byId('pdeltaForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -86,6 +92,56 @@ async function runSnow() {
   const data = await calculateSnowLoads(inputs);
   if (data.status !== 'ok') return renderError(data);
   renderSnow(data.results);
+}
+
+async function runSpectrum() {
+  const el = byId('loadsResults');
+  const model = buildModel('3d_frame');
+  if (!model.nodes || model.nodes.length < 2) {
+    el.innerHTML = '<div class="loads-error"><strong>No 3D model</strong><p>Draw a multi-level 3D frame first.</p></div>';
+    return;
+  }
+  el.innerHTML = '<p class="placeholder">Solving modal response spectrum…</p>';
+  const data = await calculateResponseSpectrum({
+    model,
+    building_weight_kn: num('rsWeight'),
+    sds: num('rsSds'),
+    sd1: num('rsSd1'),
+    direction: str('rsDirection'),
+    num_modes: Math.max(1, Math.round(num('rsModes'))),
+    long_period_s: num('rsTl'),
+  });
+  if (data.status !== 'ok') return renderError(data);
+  S.results = {
+    ...(S.results || {}),
+    story_response: { story_drifts: data.results.story_drifts || [] },
+  };
+  const showDrift = byId('showDrift');
+  if (showDrift) showDrift.checked = true;
+  triggerRedraw();
+  renderSpectrum(data.results);
+}
+
+function renderSpectrum(r) {
+  const modeRows = (r.modes || []).map((m) =>
+    `<tr><td>${m.mode}</td><td>${m.period_s}</td><td>${m.spectral_acceleration_g}</td><td>${(100 * m.effective_mass_ratio).toFixed(1)}%</td><td>${m.base_shear_kn}</td></tr>`
+  ).join('');
+  const driftRows = (r.story_drifts || []).map((d) =>
+    `<tr><td>${d.story}</td><td>${d.from_m} → ${d.to_m}</td><td>${d.drift_mm}</td><td>${(100 * d.drift_ratio_delta_over_h).toFixed(3)}%</td></tr>`
+  ).join('');
+  byId('loadsResults').innerHTML = `
+    <h3>Response Spectrum — ${r.code_reference}</h3>
+    <div class="loads-props">
+      ${kv('Base shear', r.base_shear_kn, 'kN')}
+      ${kv('Mass captured', (100 * r.cumulative_mass_ratio).toFixed(1), '%')}
+      ${kv('Direction', r.direction.toUpperCase())}
+      ${kv('Idealization', r.idealization)}
+    </div>
+    <h4>Modes</h4>
+    <table class="loads-table"><thead><tr><th>Mode</th><th>T (s)</th><th>Sa (g)</th><th>Mass</th><th>V (kN)</th></tr></thead><tbody>${modeRows}</tbody></table>
+    <h4>SRSS Story Drifts</h4>
+    <table class="loads-table"><thead><tr><th>Story</th><th>Elevation (m)</th><th>Drift (mm)</th><th>Δ/h</th></tr></thead><tbody>${driftRows}</tbody></table>
+    ${warnings(r.warnings)}`;
 }
 
 function lastStoryDrifts() {
@@ -267,6 +323,10 @@ function currentInputsFor(loadType) {
 
 function renderModelAnalysis(data) {
   const el = byId('loadsResults');
+  S.results = data.results;
+  const showDrift = byId('showDrift');
+  if (showDrift) showDrift.checked = true;
+  triggerRedraw();
   const drifts = data.results.story_response?.story_drifts || [];
   const driftRows = drifts.map((d) =>
     `<tr><td>${d.from_m} → ${d.to_m}</td><td>${d.height_m}</td><td>${d.drift_mm?.toFixed(2)}</td><td>${d.drift_ratio ? (1 / d.drift_ratio).toFixed(4) : '—'}</td></tr>`

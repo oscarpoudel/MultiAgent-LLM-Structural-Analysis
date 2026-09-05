@@ -77,6 +77,11 @@ export function draw() {
     drawMemberForceOverlay3D();
   }
 
+  const showDrift = byId('showDrift');
+  if (showDrift && showDrift.checked && S.results && S.results.story_response?.story_drifts) {
+    drawStoryDriftOverlay3D();
+  }
+
   const showDeformed = byId('showDeformed');
   if (showDeformed && showDeformed.checked && S.results && (S.results.node_displacements || S.results.displacements)) {
     drawDeformedShape3D(isDark);
@@ -764,6 +769,53 @@ function drawMemberForceOverlay3D() {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.copy(v1);
     mesh.lookAt(v2);
+    canvas3d.membersGroup.add(mesh);
+  });
+}
+
+function drawStoryDriftOverlay3D() {
+  const drifts = S.results.story_response?.story_drifts || [];
+  if (!drifts.length) return;
+  const offset = getElevOffset();
+
+  S.members.forEach((member) => {
+    const n1 = S.nodes.find((node) => node.id === member.n1);
+    const n2 = S.nodes.find((node) => node.id === member.n2);
+    if (!n1 || !n2) return;
+    const midpointZ = ((n1.z || 0) + (n2.z || 0)) / 2;
+    const drift = drifts.find((item) => midpointZ > item.from_m - 1e-6 && midpointZ <= item.to_m + 1e-6);
+    if (!drift) return;
+
+    const demandRatio = drift.drift_ratio_delta_over_h ?? (drift.drift_ratio ? 1 / drift.drift_ratio : 0);
+    const utilization = Math.max(0, demandRatio / 0.02);
+    const color = utilization > 1 ? 0xef4444 : utilization > 0.5 ? 0xf59e0b : 0x22c55e;
+    const opacity = 0.35 + Math.min(utilization, 1) * 0.25;
+
+    let v1;
+    let v2;
+    if (offset) {
+      const xAxis = canvas3d.elevType === 'xAxis';
+      v1 = xAxis
+        ? new THREE.Vector3(n1.x - offset.cx, -offset.cy, n1.z || 0)
+        : new THREE.Vector3(-offset.cx, n1.y - offset.cy, n1.z || 0);
+      v2 = xAxis
+        ? new THREE.Vector3(n2.x - offset.cx, -offset.cy, n2.z || 0)
+        : new THREE.Vector3(-offset.cx, n2.y - offset.cy, n2.z || 0);
+    } else {
+      v1 = new THREE.Vector3(n1.x, n1.y, n1.z || 0);
+      v2 = new THREE.Vector3(n2.x, n2.y, n2.z || 0);
+    }
+    const distance = v1.distanceTo(v2);
+    if (distance <= 0) return;
+
+    const geometry = new THREE.CylinderGeometry(0.18, 0.18, distance, 10);
+    geometry.translate(0, distance / 2, 0);
+    geometry.rotateX(Math.PI / 2);
+    const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.copy(v1);
+    mesh.lookAt(v2);
+    mesh.userData = { id: member.id, driftUtilization: utilization };
     canvas3d.membersGroup.add(mesh);
   });
 }

@@ -1,4 +1,5 @@
 """Tests for ASCE 7-22 wind and seismic load determination tools."""
+import pytest
 from app.models import SeismicInputs, SlabInputs, SnowInputs, WindInputs
 from app.tools.seismic import _interp, calculate_seismic_base_shear
 from app.tools.slab import _interp_coeff, calculate_slab
@@ -183,6 +184,19 @@ class TestSeismicBaseShear:
         )
         assert result["design_params"]["period_method"] == "user_provided"
         assert result["design_params"]["period_s"] == 1.5
+
+    def test_transition_period_is_sd1_over_sds(self) -> None:
+        result = calculate_seismic_base_shear(
+            SeismicInputs(
+                spectral_accel_sd=0.6,
+                spectral_accel_1s=0.3,
+                building_weight_kn=10000.0,
+                height_m=10.0,
+            )
+        )
+
+        coefficients = result["site_coefficients"]
+        assert coefficients["ts"] == pytest.approx(coefficients["sd1"] / coefficients["sds"], rel=1e-3)
 
     def test_story_forces_sum_equals_base_shear(self) -> None:
         result = calculate_seismic_base_shear(

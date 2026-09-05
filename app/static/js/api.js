@@ -54,6 +54,14 @@ export function exportReport(analysis) {
   });
 }
 
+export function exportPdf(reportMarkdown) {
+  return fetch('/api/export/pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ report_markdown: reportMarkdown }),
+  });
+}
+
 export function calculateWindLoads(inputs) {
   return jsonRequest('/api/loads/wind', {
     method: 'POST',
@@ -64,6 +72,14 @@ export function calculateWindLoads(inputs) {
 
 export function calculateSeismicLoads(inputs) {
   return jsonRequest('/api/loads/seismic', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
+export function calculateResponseSpectrum(inputs) {
+  return jsonRequest('/api/loads/response-spectrum', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(inputs),

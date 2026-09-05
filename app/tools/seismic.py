@@ -88,7 +88,8 @@ def calculate_seismic_base_shear(inputs: SeismicInputs) -> dict:
 
     sds = fa * ss
     sd1 = fv * s1
-    ts = sds / sd1 if sd1 > 0 else 0.0
+    # ASCE 7 transition period: Ts = SD1 / SDS.
+    ts = sd1 / sds if sds > 0 else 0.0
 
     ie = IMPORTANCE_FACTORS.get(inputs.risk_category, 1.0)
     if inputs.importance_factor is not None:

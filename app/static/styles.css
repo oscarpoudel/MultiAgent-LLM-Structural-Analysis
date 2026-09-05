@@ -448,6 +448,10 @@ summary:hover{color:var(--text);}
 .loads-body{min-height:0;overflow-y:auto;}
 .loads-form{padding:18px;}
 .loads-form h3{color:var(--accent);margin-bottom:12px;}
+.drift-legend{display:flex;flex-wrap:wrap;gap:5px 8px;padding:2px 4px 6px 24px;font-size:9px;color:var(--text3)}
+.drift-legend span{display:flex;align-items:center;gap:3px}
+.drift-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.drift-low{background:#22c55e}.drift-mid{background:#f59e0b}.drift-high{background:#ef4444}
 .loads-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
 .loads-grid label{display:flex;flex-direction:column;gap:4px;font-size:0.72rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.3px;}
 .loads-grid input,.loads-grid select{

@@ -1,4 +1,5 @@
 import { byId, downloadBlob } from './dom.js';
+import { exportPdf } from './api.js';
 import { S } from './state.js';
 
 export function renderResults(data) {
@@ -542,6 +543,17 @@ export function initExports() {
       downloadBlob(new Blob([buildReportExport(S._lastExport)], { type: 'text/markdown' }), 'report.md');
     } catch (error) {
       alert('Export failed');
+    }
+  });
+
+  byId('exportPdfBtn').addEventListener('click', async () => {
+    if (!S._lastExport) return;
+    try {
+      const response = await exportPdf(buildReportExport(S._lastExport));
+      if (!response.ok) throw new Error('PDF export failed');
+      downloadBlob(await response.blob(), 'analysis_report.pdf');
+    } catch (error) {
+      alert('PDF export failed');
     }
   });
 }

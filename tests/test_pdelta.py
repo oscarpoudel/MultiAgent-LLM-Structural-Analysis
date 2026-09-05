@@ -1,10 +1,9 @@
 """Tests for P-delta second-order analysis (deterministic)."""
 import pytest
-
 from app.models import Node3D, Structure3DInputs
 from app.tools.pdelta import (
-    amplify_story_drifts,
     amplification_factor,
+    amplify_story_drifts,
     pdelta_equivalent_lateral_forces,
     stability_coefficient,
 )
