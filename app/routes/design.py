@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from app.models import BeamSelectionInputs, ColumnSelectionInputs, ConcreteBeamInputs, ConcreteColumnInputs
 from app.tools.concrete import design_concrete_beam, design_concrete_column
+from app.tools.cost import estimate_cost
 from app.tools.section_select import select_beam, select_column
 
 bp = Blueprint("design", __name__)
@@ -52,4 +53,30 @@ def concrete_column_design():
     except ValidationError as exc:
         return jsonify({"status": "error", "message": "Invalid concrete column inputs", "details": exc.errors()}), 400
     result = design_concrete_column(inputs)
+    return jsonify({"status": "ok", "results": result})
+
+
+@bp.post("/api/design/cost")
+def cost_estimate():
+    """Estimate steel cost from a member takeoff (section + length per group).
+
+    Body:
+    - members: list of {"section": str, "length_m": float}
+    - price_per_kg (optional), fab_factor (optional), erect_factor (optional),
+      currency (optional)
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        members = data.get("members") or []
+        if not isinstance(members, list):
+            raise ValueError("members must be a list of {section, length_m}")
+        result = estimate_cost(
+            members,
+            price_per_kg=float(data.get("price_per_kg", 2.5)),
+            fab_factor=float(data.get("fab_factor", 1.0)),
+            erect_factor=float(data.get("erect_factor", 1.0)),
+            currency=str(data.get("currency", "USD")),
+        )
+    except (TypeError, ValueError) as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
     return jsonify({"status": "ok", "results": result})

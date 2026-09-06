@@ -48,3 +48,8 @@ build/
 
 # Stray console output artifacts
 3.7
+
+# opencode harness artifacts (not project files)
+node_modules/
+package.json
+package-lock.json

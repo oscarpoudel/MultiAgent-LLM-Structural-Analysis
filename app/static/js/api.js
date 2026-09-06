@@ -142,6 +142,14 @@ export function designConcreteColumn(inputs) {
   });
 }
 
+export function estimateCost(payload) {
+  return jsonRequest('/api/design/cost', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
 export function pdeltaAmplify(payload) {
   return jsonRequest('/api/loads/pdelta-amplify', {
     method: 'POST',

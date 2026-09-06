@@ -417,6 +417,7 @@
         <button class="sec-subtab active" data-sectab="library">Library</button>
         <button class="sec-subtab" data-sectab="select">Steel Selection</button>
         <button class="sec-subtab" data-sectab="concrete">Concrete Design</button>
+        <button class="sec-subtab" data-sectab="cost">Cost Estimate</button>
       </div>
       <div class="sec-row" data-secrow="library">
         <select id="secType"><option value="all">All</option><option value="w">W-Shapes</option><option value="hss">HSS</option><option value="l">Angles</option></select>
@@ -455,6 +456,25 @@
             <label>fy (MPa)<input type="number" id="colFy" value="345" step="5" min="1"/></label>
           </div>
           <button type="submit" class="btn-primary">Select Column</button>
+        </form>
+      </div>
+
+      <!-- COST ESTIMATE FORM -->
+      <div id="secCostForms" class="sec-select-forms glass hidden">
+        <form id="costForm" class="sec-sel-form">
+          <h3>Steel Cost Estimate</h3>
+          <p class="loads-sub">Enter a member takeoff (section + total length). Weights come from the section database.</p>
+          <div class="loads-grid">
+            <label>Section 1<input type="text" id="costSec1" value="W200X36"/></label>
+            <label>Length 1 (m)<input type="number" id="costLen1" value="10" step="0.5" min="0"/></label>
+            <label>Section 2 (optional)<input type="text" id="costSec2" value="W250X45"/></label>
+            <label>Length 2 (m)<input type="number" id="costLen2" value="20" step="0.5" min="0"/></label>
+            <label>Price (currency/kg)<input type="number" id="costPrice" value="2.5" step="0.1" min="0"/></label>
+            <label>Currency<input type="text" id="costCurrency" value="USD"/></label>
+            <label>Fabrication factor<input type="number" id="costFab" value="1.0" step="0.05" min="1"/></label>
+            <label>Erection factor<input type="number" id="costErect" value="1.0" step="0.05" min="1"/></label>
+          </div>
+          <button type="submit" class="btn-primary">Estimate Cost</button>
         </form>
       </div>
 

@@ -17,7 +17,6 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [ ] Timber design (NDS).
 - [ ] Foundation design (footing, pile).
 - [ ] Multi-hazard load combination optimizer.
-- [ ] Cost estimation from section selection.
 - [ ] Sensitivity analysis (parametric study).
 
 ## Completed
@@ -27,6 +26,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Fixed pre-existing lint debt (ruff clean across app+tests: import order, unused var, N802 noqa on OpenSeesPy API mirrors).
 - [x] Cross-validation suite: app/tools/cross_validation.py — compares closed-form vs OpenSeesPy FEM vs direct-stiffness fallback on beam/truss/frame benchmarks (20 signed checks, 2% rel tol). POST /api/loads/cross-validation. 6 tests. **Caught and fixed 2 real bugs:** (1) truss OpenSees force extraction had a sign error (tension reported as compression) — eleForce returns global end forces = -member force, so axial = -(fx1·c+fy1·s); (2) frame direct-stiffness member forces omitted the fixed-end force contribution (moments off by wL²/12) — now FEF + k·u. Test count 210 -> 216; coverage 81.89% -> 82.42%.
 - [x] OpenAPI/Swagger auto-generation + CI coverage gate: app/tools/openapi.py introspects the live Flask app to emit an OpenAPI 3.0 spec (Pydantic body models inlined, nested $defs promoted to components, free-form bodies for model+load endpoints). GET /api/openapi.json + GET /api/docs (self-contained, offline-capable API docs page, no CDN). CI coverage gate raised 60% -> 80% (pyproject + ci.yml). 7 tests. Test count 216 -> 223; coverage 82.42% -> 82.64%.
+- [x] Cost estimation from section selection: app/tools/cost.py — steel cost estimate from a member takeoff (section + length per group), weights resolved from the section database (weight_kg_per_m * length_m), material cost = total_weight_kg * price_per_kg, total = material * fab_factor * erect_factor, cost_per_ton, unknown sections skipped with warnings, input validation. POST /api/design/cost. UI: Sections tab "Cost Estimate" subtab (takeoff form + results table). 7 tests. Test count 223 -> 230; coverage 82.64% -> 82.83%.
 - [x] Created progress.md.
 - [x] Checkpoint: lint/import-ordering pass (all tests green).
 - [x] Wrote docs/Roadmap.md with prioritized roadmap.
@@ -56,7 +56,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [ ] Timber design (NDS).
 - [ ] Foundation design (footing, pile).
 - [ ] Multi-hazard load combination optimizer.
-- [ ] Cost estimation from section selection.
+- [x] Cost estimation from section selection.
 - [ ] Sensitivity analysis (parametric study).
 
 ## Blocked

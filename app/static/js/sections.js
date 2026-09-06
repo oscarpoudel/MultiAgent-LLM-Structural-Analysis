@@ -1,4 +1,4 @@
-import { designConcreteBeam, designConcreteColumn, fetchSection, searchSections, selectBeam, selectColumn } from './api.js';
+import { designConcreteBeam, designConcreteColumn, estimateCost, fetchSection, searchSections, selectBeam, selectColumn } from './api.js';
 import { byId, $$ } from './dom.js';
 
 export function initSections() {
@@ -29,6 +29,10 @@ export function initSections() {
     e.preventDefault();
     runConcreteColumn();
   });
+  byId('costForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    runCost();
+  });
 }
 
 function switchSectionTab(name) {
@@ -36,9 +40,11 @@ function switchSectionTab(name) {
   $$('[data-secrow]').forEach((row) => row.classList.toggle('hidden', row.dataset.secrow !== name));
   const showSteel = name === 'select';
   const showConcrete = name === 'concrete';
+  const showCost = name === 'cost';
   byId('secSelectForms').classList.toggle('hidden', !showSteel);
   byId('secConcreteForms').classList.toggle('hidden', !showConcrete);
-  byId('secResults').closest('.sec-body').classList.toggle('with-forms', showSteel || showConcrete);
+  byId('secCostForms').classList.toggle('hidden', !showCost);
+  byId('secResults').closest('.sec-body').classList.toggle('with-forms', showSteel || showConcrete || showCost);
 }
 
 function switchSelectionKind(kind) {
@@ -138,6 +144,53 @@ async function runConcreteColumn() {
   const data = await designConcreteColumn(inputs);
   if (data.status !== 'ok') return renderSelectionError(content, data);
   renderConcrete(content, data.results, 'column');
+}
+
+async function runCost() {
+  const members = [];
+  const sec1 = byId('costSec1').value.trim();
+  const len1 = num('costLen1');
+  if (sec1 && len1 > 0) members.push({ section: sec1, length_m: len1 });
+  const sec2 = byId('costSec2').value.trim();
+  const len2 = num('costLen2');
+  if (sec2 && len2 > 0) members.push({ section: sec2, length_m: len2 });
+
+  const content = byId('secResults');
+  if (!members.length) {
+    content.innerHTML = '<div class="loads-error"><strong>No members</strong><p>Enter at least one section and length.</p></div>';
+    return;
+  }
+  content.innerHTML = '<p class="placeholder">Estimating cost…</p>';
+  const data = await estimateCost({
+    members,
+    price_per_kg: num('costPrice'),
+    currency: byId('costCurrency').value.trim() || 'USD',
+    fab_factor: num('costFab'),
+    erect_factor: num('costErect'),
+  });
+  if (data.status !== 'ok') return renderSelectionError(content, data);
+  renderCost(content, data.results);
+}
+
+function renderCost(content, r) {
+  const rows = (r.groups || []).map((g) =>
+    `<tr><td>${g.section}</td><td>${g.length_m}</td><td>${g.weight_kg_per_m}</td><td>${g.weight_kg}</td><td>${g.weight_t}</td></tr>`
+  ).join('');
+  const cur = r.currency;
+  let html = `<h3>Steel Cost Estimate — ${r.method}</h3>
+    <div class="sec-props">
+      ${selRow('Total weight', r.total_weight_t, 't')}
+      ${selRow('Material cost', r.material_cost, cur)}
+      ${selRow('Total cost', r.total_cost, cur)}
+      ${selRow('Cost / ton', r.cost_per_ton, cur)}
+      ${selRow('Unit price', r.price_per_kg, cur + '/kg')}
+    </div>
+    <h4 style="margin:16px 0 6px;font-size:0.85rem;color:var(--text2);">Takeoff</h4>
+    <table class="loads-table"><thead><tr><th>Section</th><th>Length (m)</th><th>kg/m</th><th>Weight (kg)</th><th>Weight (t)</th></tr></thead><tbody>${rows}</tbody></table>`;
+  if (r.warnings && r.warnings.length) {
+    html += `<div class="loads-warn"><ul>${r.warnings.map((w) => `<li>${w}</li>`).join('')}</ul></div>`;
+  }
+  content.innerHTML = html;
 }
 
 function renderConcrete(content, r, kind) {
