@@ -8,7 +8,12 @@ and requires no extra dependencies.
 """
 from __future__ import annotations
 
+import re
+
 from flask import Flask
+
+# Matches Flask path converters: <name> or <converter:name> (e.g. <int:item_id>).
+_PATH_PARAM_RE = re.compile(r"<(?:([a-z_]+):)?([a-zA-Z_][a-zA-Z0-9_]*)>")
 
 # Endpoints whose JSON body is validated by a Pydantic model. The value is the
 # model class name in app.models.
@@ -119,8 +124,8 @@ def build_openapi_spec(app: Flask) -> dict:
             continue
         method = next(iter(rule.methods - {"HEAD", "OPTIONS"}), "GET")
         key = f"{method.upper()} {rule.rule}"
-        path_key = rule.rule.replace("<", "{").replace(">", "}")
-        path_key = path_key.replace(":", "")
+        # Convert Flask converters (<int:item_id>, <name>) to OpenAPI path params ({item_id}).
+        path_key = _PATH_PARAM_RE.sub(lambda m: "{" + m.group(2) + "}", rule.rule)
 
         operation: dict = {
             "summary": _DESCRIPTIONS.get(key, rule.endpoint.replace("_", " ").title()),

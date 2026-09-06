@@ -1,4 +1,6 @@
 """Tests for the OpenAPI spec generator and docs routes."""
+import re
+
 from app.main import create_app
 from app.tools.openapi import _model_schema, build_openapi_spec
 
@@ -36,6 +38,19 @@ def test_spec_covers_key_endpoints() -> None:
         "/api/projects/{project_id}",
     ):
         assert key in spec["paths"], f"missing path {key}"
+
+
+def test_parameterized_routes_use_clean_param_names() -> None:
+    # Flask <int:item_id> must become {item_id}, not {intitem_id}.
+    client = create_app().test_client()
+    spec = _spec(client)
+    assert "/api/history/{item_id}" in spec["paths"]
+    assert "/api/projects/{project_id}" in spec["paths"]
+    assert "/api/sections/{name}" in spec["paths"]
+    # No malformed converter-prefixed params (e.g. {intitem_id}) should leak into the spec.
+    for path in spec["paths"]:
+        for param in re.findall(r"\{([^}]*)\}", path):
+            assert not param.startswith("int") and not param.startswith("float"), f"malformed param {param} in {path}"
 
 
 def test_pydantic_body_documented() -> None:
