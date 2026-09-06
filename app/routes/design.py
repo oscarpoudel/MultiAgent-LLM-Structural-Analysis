@@ -4,10 +4,17 @@ from __future__ import annotations
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
-from app.models import BeamSelectionInputs, ColumnSelectionInputs, ConcreteBeamInputs, ConcreteColumnInputs
+from app.models import (
+    BeamSelectionInputs,
+    ColumnSelectionInputs,
+    ConcreteBeamInputs,
+    ConcreteColumnInputs,
+    TimberBeamInputs,
+)
 from app.tools.concrete import design_concrete_beam, design_concrete_column
 from app.tools.cost import estimate_cost
 from app.tools.section_select import select_beam, select_column
+from app.tools.timber import design_timber_beam, list_species
 
 bp = Blueprint("design", __name__)
 
@@ -78,5 +85,26 @@ def cost_estimate():
             currency=str(data.get("currency", "USD")),
         )
     except (TypeError, ValueError) as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
+    return jsonify({"status": "ok", "results": result})
+
+
+@bp.get("/api/design/timber-species")
+def timber_species():
+    """List available timber species with NDS reference design values (MPa)."""
+    return jsonify({"status": "ok", "results": {"species": list_species()}})
+
+
+@bp.post("/api/design/timber-beam")
+def timber_beam_design():
+    """Design a rectangular timber beam (NDS, ASD)."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        inputs = TimberBeamInputs.model_validate(data)
+    except ValidationError as exc:
+        return jsonify({"status": "error", "message": "Invalid timber beam inputs", "details": exc.errors()}), 400
+    try:
+        result = design_timber_beam(inputs)
+    except ValueError as exc:
         return jsonify({"status": "error", "message": str(exc)}), 400
     return jsonify({"status": "ok", "results": result})

@@ -150,6 +150,18 @@ export function estimateCost(payload) {
   });
 }
 
+export function designTimberBeam(inputs) {
+  return jsonRequest('/api/design/timber-beam', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
+export function fetchTimberSpecies() {
+  return jsonRequest('/api/design/timber-species');
+}
+
 export function pdeltaAmplify(payload) {
   return jsonRequest('/api/loads/pdelta-amplify', {
     method: 'POST',

@@ -24,6 +24,7 @@ BODY_MODELS: dict[str, str] = {
     "POST /api/design/column": "ColumnSelectionInputs",
     "POST /api/design/concrete-beam": "ConcreteBeamInputs",
     "POST /api/design/concrete-column": "ConcreteColumnInputs",
+    "POST /api/design/timber-beam": "TimberBeamInputs",
 }
 
 # Endpoints that take a model + load inputs (free-form body).
@@ -66,6 +67,8 @@ _DESCRIPTIONS: dict[str, str] = {
     "POST /api/design/concrete-beam": "ACI 318 concrete beam design.",
     "POST /api/design/concrete-column": "ACI 318 concrete column design.",
     "POST /api/design/cost": "Steel cost estimate from a member takeoff.",
+    "GET /api/design/timber-species": "List timber species with NDS reference design values.",
+    "POST /api/design/timber-beam": "NDS timber beam design (ASD: flexure, shear, stability, deflection).",
     "POST /api/load-combinations": "ASCE 7 factored load combinations.",
     "POST /api/validate": "Validate a structural model payload.",
     "GET /api/sections": "List or search the steel section library.",

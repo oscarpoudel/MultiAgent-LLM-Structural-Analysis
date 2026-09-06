@@ -50,7 +50,7 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 
 ## Backlog Ideas
 - [x] Concrete beam/column design (ACI 318) — `app/tools/concrete.py` + `/api/design/concrete-beam` + `/api/design/concrete-column` + UI.
-- [ ] Timber design (NDS)
+- [x] Timber design (NDS) — `app/tools/timber.py` + `/api/design/timber-beam` + `/api/design/timber-species` + UI.
 - [ ] Foundation design (footing, pile)
 - [ ] Fatigue analysis
 - [ ] Stability (lateral-torsional buckling) checks

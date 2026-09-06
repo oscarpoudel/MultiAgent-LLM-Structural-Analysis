@@ -302,6 +302,24 @@ class ConcreteColumnInputs(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Timber design inputs (NDS)
+# ---------------------------------------------------------------------------
+
+class TimberBeamInputs(BaseModel):
+    species: str = Field("spf-no1", description="Species key (see GET /api/sections/timber)")
+    width_mm: float = Field(..., gt=0, description="Beam width b (mm)")
+    depth_mm: float = Field(..., gt=0, description="Beam depth d (mm)")
+    moment_kn_m: float = Field(..., gt=0, description="Service bending moment M (kN-m)")
+    shear_kn: float = Field(0.0, ge=0, description="Service shear V (kN)")
+    span_m: float = Field(..., gt=0, description="Span L (m) for deflection")
+    unbraced_length_m: float = Field(0.0, ge=0, description="Unbraced length of compression flange (m); 0 = fully braced")
+    duration: str = Field("normal", description="Load duration: permanent/long_term/normal/short_term/temporary/momentary")
+    moisture_pct: float = Field(19.0, ge=0, le=100, description="Moisture content (%) for wet-service factor")
+    temperature_c: float = Field(20.0, description="Service temperature (C) for temperature factor")
+    live_load_fraction: float = Field(0.5, ge=0.0, le=1.0, description="Fraction of total deflection attributable to live load")
+
+
+# ---------------------------------------------------------------------------
 # Agent trace / responses
 # ---------------------------------------------------------------------------
 

@@ -1,4 +1,4 @@
-import { designConcreteBeam, designConcreteColumn, estimateCost, fetchSection, searchSections, selectBeam, selectColumn } from './api.js';
+import { designConcreteBeam, designConcreteColumn, designTimberBeam, estimateCost, fetchSection, searchSections, selectBeam, selectColumn } from './api.js';
 import { byId, $$ } from './dom.js';
 
 export function initSections() {
@@ -33,6 +33,10 @@ export function initSections() {
     e.preventDefault();
     runCost();
   });
+  byId('timberForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    runTimber();
+  });
 }
 
 function switchSectionTab(name) {
@@ -40,11 +44,13 @@ function switchSectionTab(name) {
   $$('[data-secrow]').forEach((row) => row.classList.toggle('hidden', row.dataset.secrow !== name));
   const showSteel = name === 'select';
   const showConcrete = name === 'concrete';
+  const showTimber = name === 'timber';
   const showCost = name === 'cost';
   byId('secSelectForms').classList.toggle('hidden', !showSteel);
   byId('secConcreteForms').classList.toggle('hidden', !showConcrete);
+  byId('secTimberForms').classList.toggle('hidden', !showTimber);
   byId('secCostForms').classList.toggle('hidden', !showCost);
-  byId('secResults').closest('.sec-body').classList.toggle('with-forms', showSteel || showConcrete || showCost);
+  byId('secResults').closest('.sec-body').classList.toggle('with-forms', showSteel || showConcrete || showTimber || showCost);
 }
 
 function switchSelectionKind(kind) {
@@ -187,6 +193,57 @@ function renderCost(content, r) {
     </div>
     <h4 style="margin:16px 0 6px;font-size:0.85rem;color:var(--text2);">Takeoff</h4>
     <table class="loads-table"><thead><tr><th>Section</th><th>Length (m)</th><th>kg/m</th><th>Weight (kg)</th><th>Weight (t)</th></tr></thead><tbody>${rows}</tbody></table>`;
+  if (r.warnings && r.warnings.length) {
+    html += `<div class="loads-warn"><ul>${r.warnings.map((w) => `<li>${w}</li>`).join('')}</ul></div>`;
+  }
+  content.innerHTML = html;
+}
+
+async function runTimber() {
+  const inputs = {
+    species: byId('tbSpecies').value,
+    width_mm: num('tbB'),
+    depth_mm: num('tbD'),
+    moment_kn_m: num('tbM'),
+    shear_kn: num('tbV'),
+    span_m: num('tbL'),
+    unbraced_length_m: num('tbLe'),
+    duration: byId('tbDuration').value,
+    moisture_pct: num('tbMc'),
+    temperature_c: num('tbTemp'),
+    live_load_fraction: num('tbLlf'),
+  };
+  const content = byId('secResults');
+  content.innerHTML = '<p class="placeholder">Designing timber beam…</p>';
+  const data = await designTimberBeam(inputs);
+  if (data.status !== 'ok') return renderSelectionError(content, data);
+  renderTimber(content, data.results);
+}
+
+function renderTimber(content, r) {
+  const f = r.flexure;
+  const s = r.shear;
+  const d = r.deflection;
+  const adj = r.adjustment_factors;
+  const pass = r.pass;
+  const badge = pass ? '<span style="color:var(--ok,#3fb950)">PASS</span>' : '<span style="color:var(--danger,#f85149)">FAIL</span>';
+  let html = `<h3>Timber Beam — ${r.code_reference} ${badge}</h3>
+    <div class="sec-props">
+      ${selRow('Species', r.inputs.species)}
+      ${selRow('Section', `${r.inputs.width_mm} × ${r.inputs.depth_mm}`, 'mm')}
+      ${selRow('Governs', r.governs)}
+      ${selRow('Max util', r.max_util)}
+      ${selRow('Fb adj', r.adjusted_values_mpa.Fb_adj, 'MPa')}
+      ${selRow('Fv adj', r.adjusted_values_mpa.Fv_adj, 'MPa')}
+      ${selRow('CD/CM/Ct/CF/CL', `${adj.CD}/${adj.CM}/${adj.Ct}/${adj.CF}/${adj.CL}`)}
+    </div>
+    <h4 style="margin:16px 0 6px;font-size:0.85rem;color:var(--text2);">Checks</h4>
+    <table class="loads-table"><thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Util</th><th>OK</th></tr></thead><tbody>
+      <tr><td>Flexure</td><td>${f.f_b_mpa} MPa</td><td>${f.Fb_adj_mpa} MPa</td><td>${f.util}</td><td>${f.ok ? '✓' : '✗'}</td></tr>
+      <tr><td>Shear</td><td>${s.f_v_mpa} MPa</td><td>${s.Fv_adj_mpa} MPa</td><td>${s.util}</td><td>${s.ok ? '✓' : '✗'}</td></tr>
+      <tr><td>Defl (total)</td><td>${d.delta_total_mm} mm</td><td>${d.limit_total_mm} mm</td><td>—</td><td>${d.total_ok ? '✓' : '✗'}</td></tr>
+      <tr><td>Defl (live)</td><td>${d.delta_live_mm} mm</td><td>${d.limit_live_mm} mm</td><td>—</td><td>${d.live_ok ? '✓' : '✗'}</td></tr>
+    </tbody></table>`;
   if (r.warnings && r.warnings.length) {
     html += `<div class="loads-warn"><ul>${r.warnings.map((w) => `<li>${w}</li>`).join('')}</ul></div>`;
   }
