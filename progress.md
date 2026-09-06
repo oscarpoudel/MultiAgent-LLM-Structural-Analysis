@@ -14,7 +14,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - Never fabricate engineering results; all numbers come from deterministic solvers.
 
 ## Active TODO
-- (none — all roadmap Active TODOs complete; remaining backlog: Fatigue, LTB stability checks)
+- (none — all roadmap items complete; LTB already covered by the AISC 360 steel beam selector)
 
 ## Completed
 - [x] Response spectrum (Cantilever) analysis: app/tools/response_spectrum.py — ASCE 7-22 design spectrum (Eq. 11.4-1..6), lumped floor-mass shear-building/cantilever idealization built from vertical members (3EI/L³ free, 12EI/L³ with rigid diaphragms), numpy eigendecomposition, modal participation factors, SRSS combination of modal floor forces/shears/displacements, drift ratios. POST /api/loads/response-spectrum. Loads tab "Response Spectrum" subtab (SDS/SD1/W/direction/modes/TL) wired to the current 3D model. Fixed ASCE 7 Ts bug in seismic.py (was SDS/SD1, now SD1/SDS). 6 tool+route tests. Test count 199 -> 206.
@@ -28,6 +28,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Foundation design (footing + pile): app/tools/foundation.py — ACI 318-19 spread footing (bearing sizing from allowable capacity, one-way & punching shear at critical sections, flexure with iterated stress-block depth, bar count/spacing) + static pile capacity (skin friction alpha*f*A_shaft + end bearing q_p*A_p, FS, Converse-Labarre group efficiency). Routes POST /api/design/spread-footing + POST /api/design/pile. UI: Sections tab "Foundation" subtab (Spread Footing / Pile Capacity forms + checks/capacity tables). 16 tests. Test count 242 -> 258; coverage 82.95% -> 83.35%.
 - [x] Sensitivity analysis (parametric study): app/tools/sensitivity.py — OAT parametric study on a simply-supported beam (Roark's M=wL²/8, δ=5wL⁴/384EI, σ=M/S). Sweeps w/L/E/I/S over user ranges, reports swept responses + elasticity (log-log) sensitivity coefficients S=(dr/dp)(p/r) via central difference at the base point, plus a parameter ranking by max |S|. Validated: load→1.0, span→4.0 (deflection), E/I→-1.0. POST /api/analyze/sensitivity. UI: Loads tab "Sensitivity" subtab (base + ranges + parameter checkboxes + ranking/sweep tables). 10 tests. Test count 258 -> 268; coverage 83.35% -> 83.55%.
 - [x] Multi-hazard load combination optimizer: app/tools/multi_hazard.py — evaluates all ASCE 7-22 LRFD/ASD combinations against a member capacity (utilization = response_factor*factored_load/capacity), ranks combinations by utilization, identifies the governing case, and sweeps each hazard component (D/L/W/S/E) over a range to find the worst-case scenario. Reuses load_combinations.py. POST /api/analyze/multi-hazard. UI: Loads tab "Multi-Hazard" subtab (base loads + ranges + component checkboxes + ranking/sweep tables). 12 tests. Test count 268 -> 280; coverage 83.55% -> 83.83%.
+- [x] Fatigue analysis (AISC 360): app/tools/fatigue.py — AISC 360-16 S-N curve fatigue design (N = C/f³, infinite life below the category fatigue limit). 5 fatigue categories (A–E, Table 16.5 SI), cycles-to-failure, allowable stress range for the design life, utilization check, and required-category recommendation. Routes GET /api/design/fatigue-categories + POST /api/design/fatigue. UI: Sections tab "Fatigue" subtab (category/stress-range/cycles form + PASS/FAIL + required category). 13 tests. Test count 280 -> 293; coverage 83.83% -> 84.01%.
 - [x] Created progress.md.
 - [x] Checkpoint: lint/import-ordering pass (all tests green).
 - [x] Wrote docs/Roadmap.md with prioritized roadmap.
@@ -59,6 +60,8 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Multi-hazard load combination optimizer.
 - [x] Cost estimation from section selection.
 - [x] Sensitivity analysis (parametric study).
+- [x] Fatigue analysis (AISC 360 S-N).
+- [x] Stability (LTB) checks — already covered by the AISC 360 steel beam selector (`_ltb_capacity`, AISC 360 F2, section_select.py).
 
 ## Blocked
 - None.

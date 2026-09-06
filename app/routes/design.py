@@ -9,12 +9,14 @@ from app.models import (
     ColumnSelectionInputs,
     ConcreteBeamInputs,
     ConcreteColumnInputs,
+    FatigueInputs,
     PileInputs,
     SpreadFootingInputs,
     TimberBeamInputs,
 )
 from app.tools.concrete import design_concrete_beam, design_concrete_column
 from app.tools.cost import estimate_cost
+from app.tools.fatigue import check_fatigue, list_fatigue_categories
 from app.tools.foundation import design_pile_capacity, design_spread_footing
 from app.tools.section_select import select_beam, select_column
 from app.tools.timber import design_timber_beam, list_species
@@ -134,4 +136,25 @@ def pile_capacity():
     except ValidationError as exc:
         return jsonify({"status": "error", "message": "Invalid pile inputs", "details": exc.errors()}), 400
     result = design_pile_capacity(inputs)
+    return jsonify({"status": "ok", "results": result})
+
+
+@bp.get("/api/design/fatigue-categories")
+def fatigue_categories():
+    """List AISC 360 fatigue categories with S-N parameters."""
+    return jsonify({"status": "ok", "results": {"categories": list_fatigue_categories()}})
+
+
+@bp.post("/api/design/fatigue")
+def fatigue_check():
+    """Check a fatigue detail against the AISC 360 S-N curve for the design life."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        inputs = FatigueInputs.model_validate(data)
+    except ValidationError as exc:
+        return jsonify({"status": "error", "message": "Invalid fatigue inputs", "details": exc.errors()}), 400
+    try:
+        result = check_fatigue(inputs)
+    except ValueError as exc:
+        return jsonify({"status": "error", "message": str(exc)}), 400
     return jsonify({"status": "ok", "results": result})

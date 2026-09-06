@@ -496,6 +496,7 @@
         <button class="sec-subtab" data-sectab="concrete">Concrete Design</button>
         <button class="sec-subtab" data-sectab="timber">Timber Design</button>
         <button class="sec-subtab" data-sectab="foundation">Foundation</button>
+        <button class="sec-subtab" data-sectab="fatigue">Fatigue</button>
         <button class="sec-subtab" data-sectab="cost">Cost Estimate</button>
       </div>
       <div class="sec-row" data-secrow="library">
@@ -572,6 +573,28 @@
             <label>c/c spacing (m)<input type="number" id="plS" value="0" step="0.1" min="0"/></label>
           </div>
           <button type="submit" class="btn-primary">Compute Capacity</button>
+        </form>
+      </div>
+
+      <!-- FATIGUE FORM -->
+      <div id="secFatigueForms" class="sec-select-forms glass hidden">
+        <form id="fatigueForm" class="sec-sel-form">
+          <h3>Steel Fatigue (AISC 360 S-N)</h3>
+          <p class="loads-sub">Checks a detail's stress range against the AISC 360 S-N curve for the design life (N = C/f³).</p>
+          <div class="loads-grid">
+            <label>Fatigue category
+              <select id="fgCat">
+                <option value="A">A — no holes/slots</option>
+                <option value="B">B — tension-side welds</option>
+                <option value="C" selected>C — comp-side welds, copes</option>
+                <option value="D">D — attachments, unstiffened holes</option>
+                <option value="E">E — most critical details</option>
+              </select>
+            </label>
+            <label>Stress range (MPa)<input type="number" id="fgF" value="100" step="1" min="1"/></label>
+            <label>Design cycles N<input type="number" id="fgN" value="1000000" step="100000" min="1"/></label>
+          </div>
+          <button type="submit" class="btn-primary">Check Fatigue</button>
         </form>
       </div>
 

@@ -52,8 +52,8 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [x] Concrete beam/column design (ACI 318) — `app/tools/concrete.py` + `/api/design/concrete-beam` + `/api/design/concrete-column` + UI.
 - [x] Timber design (NDS) — `app/tools/timber.py` + `/api/design/timber-beam` + `/api/design/timber-species` + UI.
 - [x] Foundation design (footing, pile) — `app/tools/foundation.py` + `/api/design/spread-footing` + `/api/design/pile` + UI.
-- [ ] Fatigue analysis
-- [ ] Stability (lateral-torsional buckling) checks
+- [x] Fatigue analysis — `app/tools/fatigue.py` + `/api/design/fatigue` + `/api/design/fatigue-categories` + UI.
+- [x] Stability (lateral-torsional buckling) checks — covered by the AISC 360 steel beam selector (`_ltb_capacity`, AISC 360 F2, `app/tools/section_select.py`).
 - [x] Multi-hazard load combination optimizer — `app/tools/multi_hazard.py` + `/api/analyze/multi-hazard` + UI.
 - [x] Cost estimation from section selection — `app/tools/cost.py` + `/api/design/cost` + UI.
 - [x] Sensitivity analysis (parametric study) — `app/tools/sensitivity.py` + `/api/analyze/sensitivity` + UI.

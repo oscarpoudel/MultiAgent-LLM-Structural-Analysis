@@ -1,4 +1,4 @@
-import { designConcreteBeam, designConcreteColumn, designPile, designSpreadFooting, designTimberBeam, estimateCost, fetchSection, searchSections, selectBeam, selectColumn } from './api.js';
+import { checkFatigue, designConcreteBeam, designConcreteColumn, designPile, designSpreadFooting, designTimberBeam, estimateCost, fetchSection, searchSections, selectBeam, selectColumn } from './api.js';
 import { byId, $$ } from './dom.js';
 
 export function initSections() {
@@ -48,6 +48,10 @@ export function initSections() {
     e.preventDefault();
     runPile();
   });
+  byId('fatigueForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    runFatigue();
+  });
 }
 
 function switchSectionTab(name) {
@@ -57,13 +61,15 @@ function switchSectionTab(name) {
   const showConcrete = name === 'concrete';
   const showTimber = name === 'timber';
   const showFoundation = name === 'foundation';
+  const showFatigue = name === 'fatigue';
   const showCost = name === 'cost';
   byId('secSelectForms').classList.toggle('hidden', !showSteel);
   byId('secConcreteForms').classList.toggle('hidden', !showConcrete);
   byId('secTimberForms').classList.toggle('hidden', !showTimber);
   byId('secFoundationForms').classList.toggle('hidden', !showFoundation);
+  byId('secFatigueForms').classList.toggle('hidden', !showFatigue);
   byId('secCostForms').classList.toggle('hidden', !showCost);
-  byId('secResults').closest('.sec-body').classList.toggle('with-forms', showSteel || showConcrete || showTimber || showFoundation || showCost);
+  byId('secResults').closest('.sec-body').classList.toggle('with-forms', showSteel || showConcrete || showTimber || showFoundation || showFatigue || showCost);
 }
 
 function switchSelectionKind(kind) {
@@ -350,6 +356,40 @@ function renderPile(content, r) {
       ${selRow('Group eff (η)', g.efficiency)}
       ${selRow('Piles', g.piles)}
       ${selRow('Group capacity', g.allowable_capacity, 'kN')}
+    </div>`;
+  if (r.warnings && r.warnings.length) {
+    html += `<div class="loads-warn"><ul>${r.warnings.map((w) => `<li>${w}</li>`).join('')}</ul></div>`;
+  }
+  content.innerHTML = html;
+}
+
+async function runFatigue() {
+  const inputs = {
+    category: byId('fgCat').value,
+    stress_range_mpa: num('fgF'),
+    num_cycles: num('fgN'),
+  };
+  const content = byId('secResults');
+  content.innerHTML = '<p class="placeholder">Checking fatigue…</p>';
+  const data = await checkFatigue(inputs);
+  if (data.status !== 'ok') return renderSelectionError(content, data);
+  renderFatigue(content, data.results);
+}
+
+function renderFatigue(content, r) {
+  const res = r.result;
+  const badge = res.pass ? '<span style="color:var(--ok,#3fb950)">PASS</span>' : '<span style="color:var(--danger,#f85149)">FAIL</span>';
+  const nf = res.infinite_life ? '∞' : res.cycles_to_failure.toExponential(2);
+  let html = `<h3>Steel Fatigue — ${r.code_reference} ${badge}</h3>
+    <div class="sec-props">
+      ${selRow('Category', r.inputs.category)}
+      ${selRow('Fatigue limit', r.category_params.fatigue_limit_mpa, 'MPa')}
+      ${selRow('Stress range', r.inputs.stress_range_mpa, 'MPa')}
+      ${selRow('Design cycles', r.inputs.num_cycles.toExponential(2))}
+      ${selRow('Cycles to failure', nf)}
+      ${selRow('Utilization', res.utilization)}
+      ${selRow('Allowable range', res.allowable_stress_range_mpa, 'MPa')}
+      ${selRow('Required category', r.required_category || '—')}
     </div>`;
   if (r.warnings && r.warnings.length) {
     html += `<div class="loads-warn"><ul>${r.warnings.map((w) => `<li>${w}</li>`).join('')}</ul></div>`;

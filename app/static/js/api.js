@@ -194,6 +194,18 @@ export function runMultiHazard(inputs) {
   });
 }
 
+export function checkFatigue(inputs) {
+  return jsonRequest('/api/design/fatigue', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
+export function fetchFatigueCategories() {
+  return jsonRequest('/api/design/fatigue-categories');
+}
+
 export function pdeltaAmplify(payload) {
   return jsonRequest('/api/loads/pdelta-amplify', {
     method: 'POST',

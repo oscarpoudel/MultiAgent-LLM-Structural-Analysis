@@ -349,6 +349,16 @@ class PileInputs(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Fatigue design inputs (AISC 360)
+# ---------------------------------------------------------------------------
+
+class FatigueInputs(BaseModel):
+    category: str = Field("C", description="Fatigue category: A, B, C, D, E (A most resistant)")
+    stress_range_mpa: float = Field(..., gt=0, description="Stress range f_f (MPa)")
+    num_cycles: float = Field(..., gt=0, description="Design number of cycles N")
+
+
+# ---------------------------------------------------------------------------
 # Multi-hazard load combination optimizer inputs
 # ---------------------------------------------------------------------------
 
