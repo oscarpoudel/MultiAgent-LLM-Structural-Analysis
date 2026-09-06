@@ -41,9 +41,9 @@ jobs:
           pip install ruff
           ruff check app/ tests/ --output-format=github
 
-      - name: Run tests with coverage
+      - name: Run tests with coverage (gate: 80%)
         run: |
-          pytest tests/ -v --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=60
+          pytest tests/ -v --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=80
         env:
           AGENT_LLM_PROVIDER: none
           APP_SECRET_KEY: ci-test-secret-key

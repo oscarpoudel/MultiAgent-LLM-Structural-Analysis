@@ -14,7 +14,11 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - Never fabricate engineering results; all numbers come from deterministic solvers.
 
 ## Active TODO
-- [ ] OpenAPI/Swagger auto-generation + CI coverage gate.
+- [ ] Timber design (NDS).
+- [ ] Foundation design (footing, pile).
+- [ ] Multi-hazard load combination optimizer.
+- [ ] Cost estimation from section selection.
+- [ ] Sensitivity analysis (parametric study).
 
 ## Completed
 - [x] Response spectrum (Cantilever) analysis: app/tools/response_spectrum.py — ASCE 7-22 design spectrum (Eq. 11.4-1..6), lumped floor-mass shear-building/cantilever idealization built from vertical members (3EI/L³ free, 12EI/L³ with rigid diaphragms), numpy eigendecomposition, modal participation factors, SRSS combination of modal floor forces/shears/displacements, drift ratios. POST /api/loads/response-spectrum. Loads tab "Response Spectrum" subtab (SDS/SD1/W/direction/modes/TL) wired to the current 3D model. Fixed ASCE 7 Ts bug in seismic.py (was SDS/SD1, now SD1/SDS). 6 tool+route tests. Test count 199 -> 206.
@@ -22,6 +26,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Export report to PDF: app/tools/pdf_export.py — dependency-free PDF 1.4 writer (Helvetica, paginated, markdown tables/headings/code stripped, xref offsets verified). POST /api/export/pdf + "PDF" button in results panel. 4 tests. Test count 206 -> 210; coverage 81.33% -> 81.89%.
 - [x] Fixed pre-existing lint debt (ruff clean across app+tests: import order, unused var, N802 noqa on OpenSeesPy API mirrors).
 - [x] Cross-validation suite: app/tools/cross_validation.py — compares closed-form vs OpenSeesPy FEM vs direct-stiffness fallback on beam/truss/frame benchmarks (20 signed checks, 2% rel tol). POST /api/loads/cross-validation. 6 tests. **Caught and fixed 2 real bugs:** (1) truss OpenSees force extraction had a sign error (tension reported as compression) — eleForce returns global end forces = -member force, so axial = -(fx1·c+fy1·s); (2) frame direct-stiffness member forces omitted the fixed-end force contribution (moments off by wL²/12) — now FEF + k·u. Test count 210 -> 216; coverage 81.89% -> 82.42%.
+- [x] OpenAPI/Swagger auto-generation + CI coverage gate: app/tools/openapi.py introspects the live Flask app to emit an OpenAPI 3.0 spec (Pydantic body models inlined, nested $defs promoted to components, free-form bodies for model+load endpoints). GET /api/openapi.json + GET /api/docs (self-contained, offline-capable API docs page, no CDN). CI coverage gate raised 60% -> 80% (pyproject + ci.yml). 7 tests. Test count 216 -> 223; coverage 82.42% -> 82.64%.
 - [x] Created progress.md.
 - [x] Checkpoint: lint/import-ordering pass (all tests green).
 - [x] Wrote docs/Roadmap.md with prioritized roadmap.
@@ -47,7 +52,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Response spectrum (Cantilever) analysis.
 - [x] Story drift visualization on canvas.
 - [x] Export report to PDF.
-- [ ] OpenAPI/Swagger auto-generation.
+- [x] OpenAPI/Swagger auto-generation.
 - [ ] Timber design (NDS).
 - [ ] Foundation design (footing, pile).
 - [ ] Multi-hazard load combination optimizer.

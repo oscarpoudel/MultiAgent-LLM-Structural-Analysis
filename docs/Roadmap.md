@@ -43,10 +43,10 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [x] **Export to PDF** — Render markdown report to PDF (dependency-free PDF 1.4 writer, `/api/export/pdf`).
 
 ## Phase 6 — Quality & Ops
-- [x] **Test coverage to 80%+** — Overall 80.12%; 3D solver (opensees_3d) 94%, frame 93%, truss 95%.
+- [x] **Test coverage to 80%+** — Overall 82.64%; 3D solver (opensees_3d) 99%, frame 93%, truss 95%, concrete 100%.
 - [x] **Cross-validation suite** — Compare OpenSeesPy vs closed-form vs direct stiffness on benchmark models. `app/tools/cross_validation.py` + `/api/loads/cross-validation`. 20 signed checks across beam/truss/frame; caught and fixed a truss force sign bug and a frame fixed-end-force omission.
-- [ ] **API docs auto-generation** — OpenAPI/Swagger from Pydantic models.
-- [ ] **CI coverage gate** — Block PRs below threshold.
+- [x] **API docs auto-generation** — OpenAPI 3.0 spec from live Flask routes + Pydantic models. `app/tools/openapi.py` + `GET /api/openapi.json` + `GET /api/docs` (self-contained docs page).
+- [x] **CI coverage gate** — Block PRs below 80% (pyproject + ci.yml `--cov-fail-under=80`).
 
 ## Backlog Ideas
 - [x] Concrete beam/column design (ACI 318) — `app/tools/concrete.py` + `/api/design/concrete-beam` + `/api/design/concrete-column` + UI.
