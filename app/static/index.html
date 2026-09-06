@@ -418,6 +418,7 @@
         <button class="sec-subtab" data-sectab="select">Steel Selection</button>
         <button class="sec-subtab" data-sectab="concrete">Concrete Design</button>
         <button class="sec-subtab" data-sectab="timber">Timber Design</button>
+        <button class="sec-subtab" data-sectab="foundation">Foundation</button>
         <button class="sec-subtab" data-sectab="cost">Cost Estimate</button>
       </div>
       <div class="sec-row" data-secrow="library">
@@ -432,6 +433,10 @@
       <div class="sec-row hidden" data-secrow="concrete">
         <button class="sec-subtab active" data-cek="beam">Beam (Mu, Vu, b, h)</button>
         <button class="sec-subtab" data-cek="column">Column (Pu, Ø)</button>
+      </div>
+      <div class="sec-row hidden" data-secrow="foundation">
+        <button class="sec-subtab active" data-fnd="footing">Spread Footing</button>
+        <button class="sec-subtab" data-fnd="pile">Pile Capacity</button>
       </div>
     </div>
 
@@ -457,6 +462,39 @@
             <label>fy (MPa)<input type="number" id="colFy" value="345" step="5" min="1"/></label>
           </div>
           <button type="submit" class="btn-primary">Select Column</button>
+        </form>
+      </div>
+
+      <!-- FOUNDATION FORMS -->
+      <div id="secFoundationForms" class="sec-select-forms glass hidden">
+        <form id="footingForm" class="sec-sel-form" data-fndform="footing">
+          <h3>Spread Footing (ACI 318)</h3>
+          <div class="loads-grid">
+            <label>Axial load P (kN)<input type="number" id="ftP" value="1000" step="10" min="1"/></label>
+            <label>Allowable bearing (kPa)<input type="number" id="ftQ" value="200" step="5" min="1"/></label>
+            <label>Column width (mm)<input type="number" id="ftCw" value="400" step="10" min="50"/></label>
+            <label>Column depth (mm)<input type="number" id="ftCd" value="400" step="10" min="50"/></label>
+            <label>Footing depth (mm)<input type="number" id="ftD" value="600" step="25" min="200"/></label>
+            <label>f'c (MPa)<input type="number" id="ftFc" value="25" step="1" min="10"/></label>
+            <label>fy (MPa)<input type="number" id="ftFy" value="420" step="10" min="250"/></label>
+            <label>Bar dia (mm)<input type="number" id="ftBar" value="20" step="1" min="8"/></label>
+          </div>
+          <button type="submit" class="btn-primary">Design Footing</button>
+        </form>
+        <form id="pileForm" class="sec-sel-form hidden" data-fndform="pile">
+          <h3>Pile Capacity (static)</h3>
+          <div class="loads-grid">
+            <label>Pile diameter (mm)<input type="number" id="plD" value="500" step="10" min="50"/></label>
+            <label>Pile length (m)<input type="number" id="plL" value="10" step="0.5" min="1"/></label>
+            <label>Skin friction (kPa)<input type="number" id="plF" value="50" step="1" min="1"/></label>
+            <label>Alpha factor<input type="number" id="plA" value="0.5" step="0.05" min="0.1" max="1"/></label>
+            <label>End bearing (kPa)<input type="number" id="plQp" value="1000" step="10" min="1"/></label>
+            <label>Factor of safety<input type="number" id="plFs" value="2.5" step="0.1" min="1"/></label>
+            <label>Piles per row<input type="number" id="plN" value="1" step="1" min="1"/></label>
+            <label>Rows<input type="number" id="plM" value="1" step="1" min="1"/></label>
+            <label>c/c spacing (m)<input type="number" id="plS" value="0" step="0.1" min="0"/></label>
+          </div>
+          <button type="submit" class="btn-primary">Compute Capacity</button>
         </form>
       </div>
 

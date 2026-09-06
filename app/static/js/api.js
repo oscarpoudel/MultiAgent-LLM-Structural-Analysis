@@ -162,6 +162,22 @@ export function fetchTimberSpecies() {
   return jsonRequest('/api/design/timber-species');
 }
 
+export function designSpreadFooting(inputs) {
+  return jsonRequest('/api/design/spread-footing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
+export function designPile(inputs) {
+  return jsonRequest('/api/design/pile', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
 export function pdeltaAmplify(payload) {
   return jsonRequest('/api/loads/pdelta-amplify', {
     method: 'POST',

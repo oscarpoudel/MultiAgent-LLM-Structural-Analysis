@@ -1,4 +1,4 @@
-import { designConcreteBeam, designConcreteColumn, designTimberBeam, estimateCost, fetchSection, searchSections, selectBeam, selectColumn } from './api.js';
+import { designConcreteBeam, designConcreteColumn, designPile, designSpreadFooting, designTimberBeam, estimateCost, fetchSection, searchSections, selectBeam, selectColumn } from './api.js';
 import { byId, $$ } from './dom.js';
 
 export function initSections() {
@@ -12,6 +12,9 @@ export function initSections() {
   });
   $$('.sec-subtab[data-cek]').forEach((btn) => {
     btn.addEventListener('click', () => switchConcreteKind(btn.dataset.cek));
+  });
+  $$('.sec-subtab[data-fnd]').forEach((btn) => {
+    btn.addEventListener('click', () => switchFoundationKind(btn.dataset.fnd));
   });
   byId('beamSelForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -37,6 +40,14 @@ export function initSections() {
     e.preventDefault();
     runTimber();
   });
+  byId('footingForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    runFooting();
+  });
+  byId('pileForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    runPile();
+  });
 }
 
 function switchSectionTab(name) {
@@ -45,12 +56,14 @@ function switchSectionTab(name) {
   const showSteel = name === 'select';
   const showConcrete = name === 'concrete';
   const showTimber = name === 'timber';
+  const showFoundation = name === 'foundation';
   const showCost = name === 'cost';
   byId('secSelectForms').classList.toggle('hidden', !showSteel);
   byId('secConcreteForms').classList.toggle('hidden', !showConcrete);
   byId('secTimberForms').classList.toggle('hidden', !showTimber);
+  byId('secFoundationForms').classList.toggle('hidden', !showFoundation);
   byId('secCostForms').classList.toggle('hidden', !showCost);
-  byId('secResults').closest('.sec-body').classList.toggle('with-forms', showSteel || showConcrete || showTimber || showCost);
+  byId('secResults').closest('.sec-body').classList.toggle('with-forms', showSteel || showConcrete || showTimber || showFoundation || showCost);
 }
 
 function switchSelectionKind(kind) {
@@ -61,6 +74,11 @@ function switchSelectionKind(kind) {
 function switchConcreteKind(kind) {
   $$('.sec-subtab[data-cek]').forEach((b) => b.classList.toggle('active', b.dataset.cek === kind));
   $$('.sec-sel-form[data-ccform]').forEach((f) => f.classList.toggle('hidden', f.dataset.ccform !== kind));
+}
+
+function switchFoundationKind(kind) {
+  $$('.sec-subtab[data-fnd]').forEach((b) => b.classList.toggle('active', b.dataset.fnd === kind));
+  $$('.sec-sel-form[data-fndform]').forEach((f) => f.classList.toggle('hidden', f.dataset.fndform !== kind));
 }
 
 function num(id) {
@@ -244,6 +262,95 @@ function renderTimber(content, r) {
       <tr><td>Defl (total)</td><td>${d.delta_total_mm} mm</td><td>${d.limit_total_mm} mm</td><td>—</td><td>${d.total_ok ? '✓' : '✗'}</td></tr>
       <tr><td>Defl (live)</td><td>${d.delta_live_mm} mm</td><td>${d.limit_live_mm} mm</td><td>—</td><td>${d.live_ok ? '✓' : '✗'}</td></tr>
     </tbody></table>`;
+  if (r.warnings && r.warnings.length) {
+    html += `<div class="loads-warn"><ul>${r.warnings.map((w) => `<li>${w}</li>`).join('')}</ul></div>`;
+  }
+  content.innerHTML = html;
+}
+
+async function runFooting() {
+  const inputs = {
+    axial_load_kn: num('ftP'),
+    allowable_bearing_kpa: num('ftQ'),
+    column_width_mm: num('ftCw'),
+    column_depth_mm: num('ftCd'),
+    footing_depth_mm: num('ftD'),
+    concrete_fck_mpa: num('ftFc'),
+    steel_fy_mpa: num('ftFy'),
+    bar_dia_mm: num('ftBar'),
+  };
+  const content = byId('secResults');
+  content.innerHTML = '<p class="placeholder">Designing footing…</p>';
+  const data = await designSpreadFooting(inputs);
+  if (data.status !== 'ok') return renderSelectionError(content, data);
+  renderFooting(content, data.results);
+}
+
+function renderFooting(content, r) {
+  const f = r.footing;
+  const b = r.bearing;
+  const ow = r.one_way_shear;
+  const pw = r.punching_shear;
+  const fl = r.flexure;
+  const bars = r.suggested_bars;
+  const badge = r.pass ? '<span style="color:var(--ok,#3fb950)">PASS</span>' : '<span style="color:var(--danger,#f85149)">FAIL</span>';
+  let html = `<h3>Spread Footing — ${r.code_reference} ${badge}</h3>
+    <div class="sec-props">
+      ${selRow('Size', `${f.width_mm} × ${f.width_mm}`, 'mm')}
+      ${selRow('Area', f.area_m2, 'm2')}
+      ${selRow('Eff. depth', f.effective_depth_mm, 'mm')}
+      ${selRow('Bearing', b.pressure_kpa, 'kPa')}
+      ${selRow('Allowable', b.allowable_kpa, 'kPa')}
+      ${selRow('As (each dir)', fl.design_as_mm2, 'mm2')}
+      ${selRow('Bars', `${bars.count_each_direction} × ${bars.bar_dia_mm} mm`)}
+      ${bars.clear_spacing_mm != null ? selRow('Clear spacing', bars.clear_spacing_mm, 'mm') : ''}
+    </div>
+    <h4 style="margin:16px 0 6px;font-size:0.85rem;color:var(--text2);">Checks</h4>
+    <table class="loads-table"><thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Util</th><th>OK</th></tr></thead><tbody>
+      <tr><td>Bearing</td><td>${b.pressure_kpa} kPa</td><td>${b.allowable_kpa} kPa</td><td>${b.util}</td><td>${b.ok ? '✓' : '✗'}</td></tr>
+      <tr><td>One-way shear</td><td>${ow.vu_kn} kN</td><td>${ow.phi_vc_kn} kN</td><td>${ow.util}</td><td>${ow.ok ? '✓' : '✗'}</td></tr>
+      <tr><td>Punching shear</td><td>${pw.vu_kn} kN</td><td>${pw.phi_vc_kn} kN</td><td>${pw.util}</td><td>${pw.ok ? '✓' : '✗'}</td></tr>
+    </tbody></table>`;
+  if (r.warnings && r.warnings.length) {
+    html += `<div class="loads-warn"><ul>${r.warnings.map((w) => `<li>${w}</li>`).join('')}</ul></div>`;
+  }
+  content.innerHTML = html;
+}
+
+async function runPile() {
+  const inputs = {
+    pile_diameter_mm: num('plD'),
+    pile_length_m: num('plL'),
+    skin_friction_kpa: num('plF'),
+    skin_friction_alpha: num('plA'),
+    end_bearing_kpa: num('plQp'),
+    factor_of_safety: num('plFs'),
+    piles_per_row: Math.round(num('plN')),
+    rows_in_group: Math.round(num('plM')),
+    center_to_center_spacing_m: num('plS'),
+  };
+  const content = byId('secResults');
+  content.innerHTML = '<p class="placeholder">Computing pile capacity…</p>';
+  const data = await designPile(inputs);
+  if (data.status !== 'ok') return renderSelectionError(content, data);
+  renderPile(content, data.results);
+}
+
+function renderPile(content, r) {
+  const c = r.capacity_kn;
+  const g = r.group;
+  let html = `<h3>Pile Capacity — ${r.code_reference}</h3>
+    <div class="sec-props">
+      ${selRow('Pile', `${r.pile.diameter_m} m dia × ${r.inputs.pile_length_m} m`)}
+      ${selRow('Skin friction', c.skin_friction, 'kN')}
+      ${selRow('End bearing', c.end_bearing, 'kN')}
+      ${selRow('Ultimate', c.ultimate, 'kN')}
+      ${selRow('Allowable', c.allowable, 'kN')}
+      ${selRow('Skin fraction', c.skin_fraction)}
+      ${selRow('Group eff (η)', g.efficiency)}
+      ${selRow('Piles', g.piles)}
+      ${selRow('Group capacity', g.allowable_capacity, 'kN')}
+    </div>`;
   if (r.warnings && r.warnings.length) {
     html += `<div class="loads-warn"><ul>${r.warnings.map((w) => `<li>${w}</li>`).join('')}</ul></div>`;
   }

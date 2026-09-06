@@ -9,10 +9,13 @@ from app.models import (
     ColumnSelectionInputs,
     ConcreteBeamInputs,
     ConcreteColumnInputs,
+    PileInputs,
+    SpreadFootingInputs,
     TimberBeamInputs,
 )
 from app.tools.concrete import design_concrete_beam, design_concrete_column
 from app.tools.cost import estimate_cost
+from app.tools.foundation import design_pile_capacity, design_spread_footing
 from app.tools.section_select import select_beam, select_column
 from app.tools.timber import design_timber_beam, list_species
 
@@ -107,4 +110,28 @@ def timber_beam_design():
         result = design_timber_beam(inputs)
     except ValueError as exc:
         return jsonify({"status": "error", "message": str(exc)}), 400
+    return jsonify({"status": "ok", "results": result})
+
+
+@bp.post("/api/design/spread-footing")
+def spread_footing_design():
+    """Size and check a square spread footing (ACI 318)."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        inputs = SpreadFootingInputs.model_validate(data)
+    except ValidationError as exc:
+        return jsonify({"status": "error", "message": "Invalid spread footing inputs", "details": exc.errors()}), 400
+    result = design_spread_footing(inputs)
+    return jsonify({"status": "ok", "results": result})
+
+
+@bp.post("/api/design/pile")
+def pile_capacity():
+    """Static pile capacity (skin friction + end bearing) and group efficiency."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        inputs = PileInputs.model_validate(data)
+    except ValidationError as exc:
+        return jsonify({"status": "error", "message": "Invalid pile inputs", "details": exc.errors()}), 400
+    result = design_pile_capacity(inputs)
     return jsonify({"status": "ok", "results": result})

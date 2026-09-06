@@ -320,6 +320,35 @@ class TimberBeamInputs(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Foundation design inputs (spread footing + pile)
+# ---------------------------------------------------------------------------
+
+class SpreadFootingInputs(BaseModel):
+    axial_load_kn: float = Field(..., gt=0, description="Service axial load P (kN)")
+    factored_axial_kn: float | None = Field(None, gt=0, description="Factored axial load Pu (kN); defaults to 1.4*P")
+    allowable_bearing_kpa: float = Field(..., gt=0, description="Allowable soil bearing capacity (kPa)")
+    column_width_mm: float = Field(..., gt=0, description="Column width (mm)")
+    column_depth_mm: float = Field(..., gt=0, description="Column depth (mm)")
+    concrete_fck_mpa: float = Field(25.0, gt=0, description="Concrete compressive strength f'c (MPa)")
+    steel_fy_mpa: float = Field(420.0, gt=0, description="Reinforcement yield strength fy (MPa)")
+    footing_depth_mm: float = Field(600.0, gt=0, description="Footing thickness (mm)")
+    bar_dia_mm: float = Field(20.0, gt=0, description="Main bar diameter (mm)")
+    footing_width_mm: float | None = Field(None, gt=0, description="Override footing width (mm); else sized from bearing")
+
+
+class PileInputs(BaseModel):
+    pile_diameter_mm: float = Field(..., gt=0, description="Pile diameter (mm)")
+    pile_length_m: float = Field(..., gt=0, description="Pile length (m)")
+    skin_friction_kpa: float = Field(..., gt=0, description="Average skin friction along shaft (kPa)")
+    skin_friction_alpha: float = Field(0.5, gt=0, le=1.0, description="Alpha factor (adhesion) for skin friction")
+    end_bearing_kpa: float = Field(..., gt=0, description="End-bearing capacity (kPa)")
+    factor_of_safety: float = Field(2.5, gt=0, description="Factor of safety on ultimate capacity")
+    piles_per_row: int = Field(1, ge=1, description="Number of piles per row")
+    rows_in_group: int = Field(1, ge=1, description="Number of rows in the group")
+    center_to_center_spacing_m: float = Field(0.0, ge=0, description="Pile center-to-center spacing (m); 0 = single pile")
+
+
+# ---------------------------------------------------------------------------
 # Agent trace / responses
 # ---------------------------------------------------------------------------
 
