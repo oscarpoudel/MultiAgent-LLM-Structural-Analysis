@@ -30,7 +30,7 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [x] **Two-way slab analysis** — Given span, thickness, load, reinforcement: check flexure (ACI 318), deflection, minimum thickness. Deterministic.
 - [x] **Concrete beam/column design** — Singly reinforced beam (flexure As/rho/phiMn, one-way shear Vc/stirrup spacing, bar count) and circular tied/spiral column (As, rho limits, phiPn, slenderness check). ACI 318, deterministic.
 
-## Phase 4 — Analysis Integration (IN PROGRESS)
+## Phase 4 — Analysis Integration (DONE)
 - [x] **Wind/seismic on drawn 3D model** — Apply computed story forces as nodal loads on canvas model (equal or windward distribution), run 3D analysis, report story drifts. `app/tools/story_forces.py` + `/api/loads/apply-story-forces` + `/api/analyze/structure-with-loads`.
 - [x] **Story forces via chat/agent** — `apply_story_forces` canvas action (LLM + deterministic fallback) wired through `/api/chat` so users can ask the assistant to apply wind/seismic story forces to the drawn model and analyze.
 - [x] **P-delta second-order analysis** — ASCE 7-22 stability coefficient (θ = V·h/W) drift amplification + P-delta equivalent lateral forces for iterative analysis. `app/tools/pdelta.py` + `/api/loads/pdelta-amplify` + `/api/loads/pdelta-forces`.
@@ -43,7 +43,7 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [x] **Export to PDF** — Render markdown report to PDF (dependency-free PDF 1.4 writer, `/api/export/pdf`).
 
 ## Phase 6 — Quality & Ops
-- [x] **Test coverage to 80%+** — Overall 82.64%; 3D solver (opensees_3d) 99%, frame 93%, truss 95%, concrete 100%.
+- [x] **Test coverage to 80%+** — Overall 84.01%; 3D solver (opensees_3d) 99%, frame 93%, truss 95%, concrete 100%.
 - [x] **Cross-validation suite** — Compare OpenSeesPy vs closed-form vs direct stiffness on benchmark models. `app/tools/cross_validation.py` + `/api/loads/cross-validation`. 20 signed checks across beam/truss/frame; caught and fixed a truss force sign bug and a frame fixed-end-force omission.
 - [x] **API docs auto-generation** — OpenAPI 3.0 spec from live Flask routes + Pydantic models. `app/tools/openapi.py` + `GET /api/openapi.json` + `GET /api/docs` (self-contained docs page).
 - [x] **CI coverage gate** — Block PRs below 80% (pyproject + ci.yml `--cov-fail-under=80`).

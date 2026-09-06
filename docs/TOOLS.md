@@ -2,18 +2,11 @@
 
 ## app/tools/__init__.py - Tools Package
 
-Exports all tool functions and section database:
-
-- BeamTool, TrussTool, FrameTool, ColumnTool, Structure3DTool
-- LoadCombinationGenerator
-- SectionDatabase, Section
-- ReportFormatter
+Package marker for the deterministic engineering tool layer. Tool functions are imported directly from their modules (e.g. `from app.tools.beam import ...`).
 
 ## app/tools/beam.py - Beam Analysis Tool
 
 Closed-form beam analysis with 4 support types and superposition-based calculations.
-
-### BeamTool Class
 
 **Supported Support Types**:
 - simply_supported: Simply supported beam
@@ -21,15 +14,14 @@ Closed-form beam analysis with 4 support types and superposition-based calculati
 - fixed_fixed: Fixed-fixed beam
 - propped_cantilever: Propped cantilever (fixed-simple)
 
-**Methods**:
+**Functions**:
 
-- `calculate(inputs: BeamInputs) -> dict`: Main entry point for beam analysis
-- `_calculate_reactions(inputs)`: Compute support reactions for each support type
-- `_calculate_shear_moment(inputs)`: Calculate shear force and bending moment at each position
-- `_calculate_deflection(inputs)`: Calculate deflection using closed-form equations
-- `_calculate_stress(inputs)`: Calculate bending and shear stress
-- `_check_deflection_limit(inputs, max_deflection)`: Verify deflection against L/360 limit
-- `_generate_warnings(inputs, results)`: Generate engineering warnings
+- `analyze_beam(inputs: BeamInputs) -> dict`: Main entry point for beam analysis
+- `analyze_simply_supported_udl(inputs: BeamInputs) -> dict`: Convenience path for the simply-supported UDL case
+- `_validate_beam_inputs(inputs)`: Validate inputs and collect warnings
+- `_simply_supported_udl / _point`, `_cantilever_udl / _point`, `_fixed_fixed_udl / _point`, `_propped_cantilever_udl / _point`: Per-support-type reaction/shear/moment/deflection equations
+- `_deflection_closed_form`, `_point_load_deflection`: Closed-form deflection
+- `_compute_beam_diagrams(inputs, e_pa)`: Build SFD/BMD/deflection diagram data
 
 **Closed-Form Equations**:
 
@@ -58,15 +50,11 @@ Returns dict with:
 
 Finite element beam analysis using OpenSeesPy for complex loading and support conditions.
 
-### OpenSeesBeamSolver Class
+**Functions**:
 
-**Methods**:
-
-- `solve(inputs: BeamInputs) -> dict`: Main solver entry point
-- `_build_model(inputs)`: Create OpenSees model with nodes, elements, and constraints
-- `_apply_loads(inputs)`: Apply distributed and point loads
-- `_run_analysis()`: Execute static analysis
-- `_extract_results()`: Extract node displacements and element forces
+- `analyze_beam_opensees(inputs: BeamInputs) -> dict`: Main solver entry point
+- `analyze_simply_supported_udl_opensees(inputs: BeamInputs) -> dict`: Convenience path for the simply-supported UDL case
+- `_build_node_positions`, `_find_nearest_node`: Discretize the span and map point loads to nodes
 
 **Model Setup**:
 
@@ -87,19 +75,13 @@ Returns dict with:
 
 ## app/tools/truss.py - Truss Analysis Tool
 
-Matrix stiffness method for planar truss analysis.
+Planar truss analysis with an OpenSeesPy path and a direct-stiffness fallback.
 
-### TrussTool Class
+**Functions**:
 
-**Methods**:
-
-- `calculate(inputs: TrussInputs) -> dict`: Main entry point
-- `_build_stiffness_matrix(inputs)`: Assemble global stiffness matrix
-- `_apply_boundary_conditions(inputs, K, F)`: Apply support constraints
-- `_solve_displacements(K_reduced, F_reduced)`: Solve for unknown displacements
-- `_calculate_member_forces(inputs, displacements)`: Compute axial forces in each member
-- `_calculate_reactions(inputs, displacements)`: Compute support reactions
-- `_check_stability(inputs)`: Verify truss determinacy (m + r = 2j)
+- `analyze_truss(inputs: TrussInputs) -> dict`: Main entry point (OpenSeesPy, falls back to direct stiffness)
+- `_analyze_truss_opensees(inputs)`: OpenSeesPy truss solve
+- `_analyze_truss_direct_stiffness(inputs, fallback_reason)`: Direct stiffness fallback (assembles K, applies BCs, solves, back-substitutes member forces and reactions)
 
 **Algorithm**:
 
@@ -123,17 +105,13 @@ Returns dict with:
 
 ## app/tools/frame.py - Frame Analysis Tool
 
-2D frame analysis using OpenSeesPy for rigid-jointed frames.
+2D frame analysis for rigid-jointed frames, with an OpenSeesPy path and a direct-stiffness fallback.
 
-### FrameTool Class
+**Functions**:
 
-**Methods**:
-
-- `calculate(inputs: FrameInputs) -> dict`: Main entry point
-- `_build_opensees_model(inputs)`: Create OpenSees model
-- `_apply_loads(inputs)`: Apply nodal and member loads
-- `_run_analysis()`: Execute static analysis
-- `_extract_results()`: Extract node displacements and element forces
+- `analyze_frame(inputs: FrameInputs) -> dict`: Main entry point (OpenSeesPy, falls back to direct stiffness)
+- `_analyze_frame_opensees(inputs)`: OpenSeesPy frame solve
+- `_analyze_frame_direct_stiffness(inputs, fallback_reason)`: Direct stiffness fallback
 
 **Model Setup**:
 
@@ -155,15 +133,9 @@ Returns dict with:
 
 Euler buckling and AISC column design checks.
 
-### ColumnTool Class
+**Functions**:
 
-**Methods**:
-
-- `calculate(inputs: ColumnInputs) -> dict`: Main entry point
-- `_calculate_euler_buckling(inputs)`: Compute Euler critical load
-- `_calculate_slenderness_ratio(inputs)`: Compute slenderness ratio
-- `_check_aisc_column(inputs, euler_load)`: AISC column design check
-- `_calculate_stress(inputs, axial_load)`: Compute axial stress
+- `analyze_column(inputs: ColumnInputs) -> dict`: Main entry point — computes Euler critical load, slenderness ratio, radius of gyration, AISC 360 Chapter E design strength, and axial stress
 
 **Calculations**:
 
@@ -189,16 +161,14 @@ Returns dict with:
 
 3D frame analysis using OpenSeesPy for spatial structures.
 
-### Structure3DTool Class
+**Functions**:
 
-**Methods**:
-
-- `calculate(inputs: Structure3DInputs) -> dict`: Main entry point
-- `_build_model(inputs)`: Create 3D OpenSees model
-- `_apply_boundary_conditions(inputs)`: Apply support constraints
-- `_apply_loads(inputs)`: Apply nodal and member loads
-- `_run_analysis()`: Execute static analysis
-- `_extract_results()`: Extract node displacements and element forces
+- `analyze_3d_structure_opensees(inputs: Structure3DInputs) -> dict`: Main entry point
+- `convert_3d_support_strings(model: dict) -> dict`: Convert string support specs to boolean DOF constraints
+- `_story_response(inputs, nodal_displacements)`: Compute story displacements and drift ratios
+- `_default_combinations(inputs)`: Build the default load combinations
+- `_apply_rigid_diaphragms(ops, inputs)`: Apply rigid floor diaphragm constraints
+- `_run_static_combo(ops, inputs, combo)`: Run one load combination and extract results
 
 **Model Setup**:
 
@@ -269,52 +239,110 @@ Two-way slab coefficients, reinforcement, and deflection checks.
 
 `select_beam(inputs: BeamSelectionInputs) -> dict` / `select_column(inputs: ColumnSelectionInputs) -> dict`
 
-Iterates W-shapes from the section database to find the lightest adequate section for flexure/shear (beam) or axial (column, AISC E3).
+Iterates W-shapes from the section database to find the lightest adequate section for flexure/shear (beam) or axial (column, AISC E3). The beam path performs a full AISC 360 F2 lateral-torsional buckling check (`_ltb_capacity`: yield, inelastic, and elastic LTB with Cb, J, Cw, h0, rts, Lp, Lr) in addition to flexure and shear.
+
+### app/tools/concrete.py - ACI 318 Concrete Design
+
+`design_concrete_beam(inputs: ConcreteBeamInputs) -> dict` / `design_concrete_column(inputs: ConcreteColumnInputs) -> dict`
+
+Singly-reinforced concrete beam (flexure As/ρ/φMn, one-way shear Vc and stirrup spacing, bar count) and circular tied/spiral column (As, ρ limits, φPn, slenderness check). Deterministic.
+
+### app/tools/timber.py - NDS Timber Design
+
+`design_timber_beam(inputs: TimberBeamInputs) -> dict` / `list_species() -> list[dict]`
+
+Rectangular timber beam design per NDS (ASD) with reference design values for 6 species and adjustment factors CD/CM/Ct/CF/CL; checks flexure, shear, lateral-torsional stability, and deflection.
+
+### app/tools/foundation.py - Foundation Design
+
+`design_spread_footing(inputs: SpreadFootingInputs) -> dict` / `design_pile_capacity(inputs: PileInputs) -> dict`
+
+ACI 318 square spread footing (bearing sizing, one-way and punching shear, flexure with an iterated stress block, bar count/spacing) and static pile capacity (skin friction + end bearing, factor of safety, Converse-Labarre group efficiency). Deterministic.
+
+### app/tools/fatigue.py - AISC 360 Fatigue
+
+`check_fatigue(inputs: FatigueInputs) -> dict` / `list_fatigue_categories() -> list[dict]`
+
+AISC 360 S-N curve check for fatigue categories A–E (Table 16.5, SI): N = C/f³, infinite life below the limit, allowable stress range, utilization check, and a recommended-category suggestion. Deterministic.
+
+### app/tools/cost.py - Cost Estimation
+
+`estimate_cost(members, *, price_per_kg, fab_factor, erect_factor, currency) -> dict`
+
+Steel cost takeoff from a list of `{section, length_m}` members using section unit weight, with fabrication/erection factors and currency. Deterministic.
+
+### app/tools/sensitivity.py - Sensitivity Study
+
+`run_sensitivity(inputs: SensitivityInputs) -> dict`
+
+One-at-a-time parametric study on a simply-supported beam (Roark's moment/deflection/stress). Computes elasticity sensitivity coefficients via central difference and ranks parameters by influence. Deterministic.
+
+### app/tools/multi_hazard.py - Multi-Hazard Optimizer
+
+`optimize_multi_hazard(inputs: MultiHazardInputs) -> dict`
+
+Evaluates all ASCE 7-22 LRFD/ASD load combinations against a member capacity, ranks them by utilization, and sweeps each D/L/W/S/E component to find the worst-case scenario. Deterministic.
+
+### app/tools/response_spectrum.py - Response Spectrum Analysis
+
+`response_spectrum_analysis(model, building_weight_kn, sds, sd1, *, direction, num_modes, long_period_s) -> dict`
+
+Deterministic lumped-mass multi-mode (Cantilever) response-spectrum analysis of a 3D model using an ASCE 7-22 design spectrum and SRSS combination, with story stiffness derived from vertical members.
+
+### app/tools/pdelta.py - P-Delta Second-Order Effects
+
+`amplify_story_drifts(story_drifts, base_shear_kn, height_m, gravity_load_kn) -> dict` / `pdelta_equivalent_lateral_forces(model, story_drifts, gravity_load_kn, *, direction) -> dict`
+
+ASCE 7-22 stability coefficient (θ = V·h/W) drift amplification and P-delta equivalent lateral forces mapped onto a drawn 3D model for iterative second-order analysis. Deterministic.
+
+### app/tools/cross_validation.py - Cross-Validation Suite
+
+`run_cross_validation() -> dict`
+
+Compares the closed-form, OpenSeesPy FEM, and direct-stiffness fallback solvers on benchmark beam/truss/frame models and reports per-quantity agreement. Deterministic.
+
+### app/tools/openapi.py - OpenAPI Spec Generator
+
+`build_openapi_spec(app) -> dict`
+
+Introspects live Flask routes and Pydantic models to produce an OpenAPI 3.0 specification. Maps POST routes to request-body models, assigns tags, and handles Flask path converters (e.g. `<int:item_id>` → `{item_id}`).
+
+### app/tools/pdf_export.py - PDF Export
+
+`markdown_report_to_pdf(markdown: str) -> bytes`
+
+Dependency-free PDF 1.4 writer that renders a Markdown engineering report to a downloadable PDF.
 
 ## app/tools/load_combinations.py - Load Combination Generator
 
-Generates ASCE 7-16 load combinations for structural design.
+Generates ASCE 7-22 load combinations for structural design.
 
-### LoadCombinationGenerator Class
+**Functions**:
 
-**Methods**:
-
-- `generate(inputs: LoadCombinationInputs) -> dict`: Generate all applicable load combinations
-- `_get_combinations() -> list`: Define ASCE 7-16 basic combinations (LRFD and ASD)
-- `_apply_gravity_combos(combos, DL, LL)`: Apply dead and live load factors
-- `_apply_lateral_combos(combos, WL, EL)`: Apply wind and seismic load factors
+- `apply_load_combination(dl_kn, ll_kn, wl_kn, sl_kn, el_kn, combination=None) -> dict`: Apply a combination's factors to the load components (returns the factored load and details)
+- `run_all_load_combinations(dl, ll, wl, sl, el, *, method) -> list[dict]`: Generate all applicable load combinations (LRFD or ASD)
+- `get_controlling_combination(dl, ll, wl, sl, el, *, method) -> dict`: Return the combination with the largest factored total
 
 **Supported Load Types**:
 
 - Dead load (D)
 - Live load (L)
-- Roof live load (Lr)
 - Wind load (W)
 - Seismic load (E)
 - Snow load (S)
-- Rain load (R)
 
 **Output**:
 
-Returns dict with:
-- combinations: List of load combination objects (name, factors per load type)
-- method: LRFD or ASD
-- code_reference: ASCE 7-16 section numbers
+`run_all_load_combinations` returns a list of combination dicts (name, per-load factors, factored total); `get_controlling_combination` returns the single combination with the largest factored total.
 
 ## app/tools/report.py - Report Formatter
 
 Generates markdown engineering reports from analysis results.
 
-### ReportFormatter Class
+**Functions**:
 
-**Methods**:
-
-- `format_report(analysis_type, results, inputs) -> str`: Generate full markdown report
-- `_format_beam_report(results, inputs)`: Format beam analysis report
-- `_format_truss_report(results, inputs)`: Format truss analysis report
-- `_format_frame_report(results, inputs)`: Format frame analysis report
-- `_format_column_report(results, inputs)`: Format column analysis report
-- `_format_3d_report(results, inputs)`: Format 3D analysis report
+- `format_engineering_report(title, assumptions, warnings, results, *, analysis_type) -> str`: Generate the full markdown report
+- `_format_3d_frame_report`, `_format_beam_report`, `_format_truss_report`, `_format_frame_report`, `_format_column_report`: Per-analysis-type report bodies
 
 **Report Sections**:
 
@@ -327,34 +355,19 @@ Generates markdown engineering reports from analysis results.
 
 ## app/tools/sections.py - Steel Section Database
 
-AISC W-shape section properties database.
+AISC steel section properties database (W-shapes, HSS, and angles).
 
-### Section Class
+### SteelSection Class
 
-**Properties**:
+**Properties** (SI units): `name`, `weight_kg_per_m`, `area_m2`, `d_mm` (depth), `bf_mm` (flange width), `tf_mm` (flange thickness), `tw_mm` (web thickness), `ix_m4`, `iy_m4` (moment of inertia), `sx_m3`, `sy_m3` (elastic section modulus), `zx_m3`, `zy_m3` (plastic section modulus), `rx_m`, `ry_m` (radius of gyration).
 
-- name: Section designation (e.g., "W10x33")
-- depth_in: Overall depth
-- flange_width_in: Flange width
-- flange_thickness_in: Flange thickness
-- web_thickness_in: Web thickness
-- area_in2: Cross-sectional area
-- ix_in4: Moment of inertia about x-axis
-- ix_in3: Section modulus about x-axis
-- iy_in4: Moment of inertia about y-axis
-- iy_in3: Section modulus about y-axis
-- weight_lb_per_ft: Unit weight
+**Functions**:
 
-### SectionDatabase Class
-
-**Methods**:
-
-- `search(query: str) -> list[Section]`: Search sections by name or properties
-- `get_by_name(name: str) -> Section`: Get section by exact name
-- `list_all() -> list[Section]`: Return all sections
-- `filter_by_weight(min_wt, max_wt) -> list[Section]`: Filter by weight range
-- `filter_by_depth(min_depth, max_depth) -> list[Section]`: Filter by depth range
+- `get_section(name: str) -> SteelSection | None`: Get a section by exact name
+- `list_sections(section_type: str = "all") -> list[str]`: List section names (optionally filtered by type)
+- `search_sections(query: str) -> list[SteelSection]`: Search sections by name
+- `section_to_dict(section: SteelSection) -> dict`: Serialize a section for the API
 
 **Database**:
 
-Contains ~100+ AISC W-shape sections (W4 through W44) with properties from AISC Steel Construction Manual.
+Contains AISC W-shape, HSS, and angle sections with properties from the AISC Steel Construction Manual.

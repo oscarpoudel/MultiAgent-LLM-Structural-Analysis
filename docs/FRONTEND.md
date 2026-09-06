@@ -8,10 +8,11 @@ app/static/
 ├── styles.css           # Complete design system (theming, layout, components)
 └── js/
     ├── chat.js          # Chat message handling, LLM status polling, quick-prompt buttons, Clear chat
-    ├── analysis.js      # Model payload builder, template generators, analysis results handler
+    ├── analysis.js      # Model payload builder, template generators, analysis results handler, JSON export/import
     ├── main.js          # Application controller, autosave, initialization, event wiring
     ├── projects.js      # Server-backed project CRUD with IndexedDB migration
-    ├── sections.js      # Steel section search UI
+    ├── sections.js      # Sections tab: section search + design subtabs (select, concrete, timber, foundation, fatigue, cost)
+    ├── loads.js         # Loads tab: wind/seismic/snow/spectrum/P-delta/sensitivity/multi-hazard forms + results
     ├── history.js       # Analysis history viewer
     ├── tabs.js          # Tab manager for panel switching
     ├── shortcuts.js     # Keyboard shortcuts
@@ -185,12 +186,27 @@ HTTP fetch wrapper for all backend API calls. Provides consistent error handling
 
 Helper functions for DOM manipulation: element creation, class toggling, event delegation.
 
-## app/static/js/sections.js - Section Search
+## app/static/js/sections.js - Sections Tab
 
-UI for searching AISC steel sections:
-- Search input with live filtering
-- Results table with section properties
-- Click to select section for member assignment
+UI for the Sections tab, which hosts the section library plus the deterministic design subtabs:
+- **Section Library**: search input with live filtering, results table, click to select a section for member assignment
+- **Section Selection**: steel beam/column selection forms (AISC 360, incl. LTB)
+- **Concrete Design**: ACI 318 beam/column forms
+- **Timber Design**: NDS beam form + species lookup
+- **Foundation**: spread footing + pile forms
+- **Fatigue**: AISC 360 S-N check form + category lookup
+- **Cost Estimate**: steel takeoff form
+
+## app/static/js/loads.js - Loads Tab
+
+UI for the Loads tab, which hosts the deterministic load-determination and second-order/advanced subtabs:
+- **Wind / Seismic / Snow**: ASCE 7-22 forms with results panels, story-force tables, and apply-to-3D-model + analyze
+- **Response Spectrum**: multi-mode SRSS analysis on the drawn 3D model
+- **P-Delta**: stability-coefficient drift amplification + equivalent lateral forces
+- **Sensitivity**: OAT parametric study with ranked parameters
+- **Multi-Hazard**: load-combination optimizer against a member capacity
+
+Subtab switching uses `data-loadtab` buttons + `data-loadform` containers (`switchLoadTab`). Each run function posts to the matching `/api/loads/*` or `/api/analyze/*` endpoint and renders results into the panel.
 
 ## app/static/js/history.js - History Viewer
 

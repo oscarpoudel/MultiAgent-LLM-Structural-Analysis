@@ -13,41 +13,27 @@
 The application follows a layered architecture with clear separation between frontend, backend routing, agent orchestration, and deterministic solvers.
 
 ```
-+---------------------------------------------------------------------+
-|                        Frontend (Vanilla JS)                         |
-|  +----------+  +----------+  +----------+  +----------+             |
-|  |  Chat    |  |  3D      |  | Results  |  | Sections |             |
-|  |  (chat)  |  |  Canvas  |  | (results)|  | (search) |             |
-|  +----+-----+  +----+-----+  +----+-----+  +----+-----+             |
-|       |              |              |              |                 |
-|  +----+--------------+--------------+--------------+-----+          |
-|  |         State Manager (state.js -> S object)                    |
-|  +---------------------------------------------------------------+ |
-|  |  Modules: analysis.js, main.js, projects.js, api.js, dom.js   | |
-|  |  canvas3d/{index,scene,render,interaction,ui}.js              | |
-|  +---------------------------------------------------------------+ |
-+----------------------------+----------------------------------------+
-                              | HTTP/JSON
-+----------------------------+----------------------------------------+
-|                      Backend (Flask)                                 |
-|  +------------------+  +------------------+  +--------------------+ |
-|  |  Routes          |  | Agent System     |  | Engineering Tools  | |
-|  |  - pages.py      |  | (agents.py)      |  | (tools/*.py)       | |
-|  |  - analyze.py    |  |  - Context       |  | - beam             | |
-|  |  - projects.py   |  |    summarizer    |  | - opensees_beam    | |
-|  |  - history.py    |  |  - Canvas tool   |  | - truss            | |
-|  |  - sections.py   |  |    router (8+)   |  | - frame            | |
-|  +--------+---------+  +--------+---------+  | - column           | |
-|           |                      |            | - opensees_3d      | |
-|  +--------+---------+  +--------+---------+  | - sections         | |
-|  | SQLite Databases  |  | LLM Clients     |  | - report           | |
-|  | - analysis_history|  | (llm.py)        |  | - load_combinations| |
-|  | - projects.db     |  | Ollama/OllamaAI |  +--------------------+ |
-|  +------------------+  +-----------------+                          |
-|  +------------------+                                                |
-|  | logging_config.py|                                                |
-|  +------------------+                                                |
-+---------------------------------------------------------------------+
+Frontend (Vanilla JS)
+  Chat | 3D Canvas | Results | Sections
+  State Manager (state.js -> S object)
+  Modules: analysis.js, main.js, projects.js, api.js, dom.js
+  canvas3d/{index,scene,render,interaction,ui}.js
+        |
+        | HTTP/JSON
+        v
+Backend (Flask)
+  Routes:        pages.py, analyze.py, design.py, loads.py,
+                 projects.py, history.py, sections.py
+  Agent System:  agents.py (context summarizer + canvas tool router)
+  LLM Clients:   llm.py (Ollama / PydanticAI / disabled)
+  Tools:         beam, opensees_beam, truss, frame, column, opensees_3d,
+                 sections, section_select, wind, seismic, snow, slab,
+                 story_forces, response_spectrum, pdelta, concrete, timber,
+                 foundation, fatigue, cost, sensitivity, multi_hazard,
+                 cross_validation, load_combinations, report, pdf_export,
+                 openapi
+  Data:          analysis_history.db (SQLite: history + projects tables)
+  Logging:       logging_config.py
 ```
 
 ## Component Map
@@ -55,14 +41,16 @@ The application follows a layered architecture with clear separation between fro
 | Layer | File(s) | Responsibility |
 |-------|---------|----------------|
 | **Entry** | `app/main.py` | Flask app factory, DB schema, blueprint wiring, LLM status check |
-| **Routes** | `app/routes/pages.py` | `GET /`, `GET /health` |
-| **Routes** | `app/routes/analyze.py` | `POST /api/analyze`, `POST /api/chat`, `POST /api/chat/evaluate`, `POST /api/analyze/structure`, `GET /api/llm-status` |
+| **Routes** | `app/routes/pages.py` | `GET /`, `GET /health`, `GET /api/openapi.json`, `GET /api/docs` |
+| **Routes** | `app/routes/analyze.py` | `POST /api/analyze`, `POST /api/chat`, `POST /api/chat/evaluate`, `POST /api/analyze/structure`, `POST /api/analyze/structure-with-loads`, `POST /api/analyze/sensitivity`, `POST /api/analyze/multi-hazard`, `POST /api/load-combinations`, `POST /api/validate`, `GET /api/llm-status` |
+| **Routes** | `app/routes/design.py` | Steel/concrete/timber/foundation/fatigue/cost design endpoints |
+| **Routes** | `app/routes/loads.py` | Wind/seismic/snow/slab/response-spectrum/P-delta/story-forces/cross-validation endpoints |
 | **Routes** | `app/routes/projects.py` | `CRUD /api/projects` (SQLite-backed project persistence) |
-| **Routes** | `app/routes/history.py` | `GET /api/history`, `GET /api/history/<id>`, `POST /api/export/csv\|report` |
+| **Routes** | `app/routes/history.py` | `GET /api/history`, `GET /api/history/<id>`, `POST /api/export/csv\|report\|pdf` |
 | **Routes** | `app/routes/sections.py` | `GET /api/sections`, `GET /api/sections/<name>` |
 | **Agents** | `app/agents.py` | Multi-agent orchestration, context summarizer, intent detection, canvas tool router |
 | **Models** | `app/models.py` | Pydantic schemas for all inputs/outputs |
-| **LLM** | `app/llm.py` | Ollama, OllamaAI (OpenAI-compatible), and disabled LLM clients |
+| **LLM** | `app/llm.py` | Ollama, PydanticAI (OpenAI-compatible), and disabled LLM clients |
 | **Config** | `app/config.py` | PydanticSettings from .env |
 | **Logging** | `app/logging_config.py` | Structured logging setup |
 | **Beam Solver** | `app/tools/beam.py` | Closed-form beam analysis (4 support types) |
@@ -71,9 +59,27 @@ The application follows a layered architecture with clear separation between fro
 | **Frame** | `app/tools/frame.py` | OpenSeesPy frame + direct stiffness fallback |
 | **Column** | `app/tools/column.py` | Euler buckling + AISC Chapter E |
 | **3D Frame** | `app/tools/opensees_3d.py` | OpenSeesPy 3D (ndm=3, ndf=6) |
-| **Load Combos** | `app/tools/load_combinations.py` | ASCE 7 load combination generator |
+| **Load Combos** | `app/tools/load_combinations.py` | ASCE 7-22 load combination generator |
 | **Reports** | `app/tools/report.py` | Markdown engineering report formatter |
+| **PDF Export** | `app/tools/pdf_export.py` | Dependency-free Markdown → PDF writer |
 | **Sections** | `app/tools/sections.py` | AISC W-shape, HSS, Angle database |
+| **Section Select** | `app/tools/section_select.py` | AISC 360 steel beam/column selection (incl. LTB) |
+| **Wind** | `app/tools/wind.py` | ASCE 7-22 wind loads (MWFRS) |
+| **Seismic** | `app/tools/seismic.py` | ASCE 7-22 seismic base shear |
+| **Snow** | `app/tools/snow.py` | ASCE 7-22 snow loads |
+| **Slab** | `app/tools/slab.py` | ACI 318 two-way slab |
+| **Story Forces** | `app/tools/story_forces.py` | Map wind/seismic story forces onto a 3D model |
+| **Response Spectrum** | `app/tools/response_spectrum.py` | Multi-mode response-spectrum analysis |
+| **P-Delta** | `app/tools/pdelta.py` | P-delta drift amplification + equivalent lateral forces |
+| **Concrete** | `app/tools/concrete.py` | ACI 318 concrete beam/column design |
+| **Timber** | `app/tools/timber.py` | NDS timber beam design |
+| **Foundation** | `app/tools/foundation.py` | Spread footing + pile capacity |
+| **Fatigue** | `app/tools/fatigue.py` | AISC 360 fatigue S-N check |
+| **Cost** | `app/tools/cost.py` | Steel cost estimation |
+| **Sensitivity** | `app/tools/sensitivity.py` | OAT parametric sensitivity study |
+| **Multi-Hazard** | `app/tools/multi_hazard.py` | Multi-hazard load-combination optimizer |
+| **Cross-Validation** | `app/tools/cross_validation.py` | Independent-solver cross-validation suite |
+| **OpenAPI** | `app/tools/openapi.py` | OpenAPI 3.0 spec generator |
 | **Frontend** | `app/static/` | HTML, CSS, vanilla JS modules |
 | **Scripts** | `scripts/debug_chat.py` | CLI debug tool for testing chat/analysis |
 

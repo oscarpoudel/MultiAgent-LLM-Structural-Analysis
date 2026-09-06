@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Python 3.12+** (project uses Python 3.12.12)
+- **Python 3.12+** (project uses Python 3.12)
 - **Conda** (for environment management) or **pip** (for direct installation)
 - **Ollama** (optional, for LLM-powered features) running on accessible server
 - **Git** (for cloning the repository)
@@ -24,21 +24,24 @@ conda activate struct_analysis
 ```
 
 This installs all dependencies including:
-- Flask 3.1.1
-- OpenSeesPy 4.3.3
-- Pydantic 2.11.7
-- PydanticAI 0.0.33
-- NumPy 2.3.2
-- SciPy 1.16.2
+- Flask 3.1.2
+- OpenSeesPy
+- Pydantic 2.13.2
+- PydanticAI 1.5.0
+- Pydantic-Settings 2.13.1
+- NumPy
+- httpx 0.28.1
 - Waitress 3.0.2
-- python-dotenv 1.1.1
+- python-dotenv 1.2.2
+- pytest 8.3.4, pytest-cov 6.0.0, pytest-env 1.7.0
+- ruff, pre-commit
 
 ### 3. Alternative: pip Installation
 
 ```bash
 python -m venv venv
 # On Windows: .\venv\Scripts\activate
-pip install -r requirements.txt
+pip install flask httpx numpy openseespy pydantic pydantic-ai pydantic-settings python-dotenv waitress pytest pytest-cov pytest-env ruff
 ```
 
 ### 4. Configure Environment
@@ -54,9 +57,9 @@ Edit .env with your settings:
 ```env
 # Ollama Configuration
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=gemma4:latest
+OLLAMA_MODEL=glm-4.7-flash:latest
 
-# Agent LLM Provider: ollama, ollamai, or none
+# Agent LLM Provider: ollama, pydanticai, or none
 AGENT_LLM_PROVIDER=ollama
 AGENT_LLM_TIMEOUT_S=8.0
 
@@ -69,12 +72,12 @@ APP_SECRET_KEY=change-me-before-deploy
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| OLLAMA_BASE_URL | http://128.235.163.220:11434 | URL of Ollama server |
-| OLLAMA_MODEL | gemma4:latest | Model name for LLM calls |
-| AGENT_LLM_PROVIDER | ollama | LLM provider: `ollama`, `ollamai`, or `none` |
+| OLLAMA_BASE_URL | http://localhost:11434 | URL of Ollama server |
+| OLLAMA_MODEL | glm-4.7-flash:latest | Model name |
+| AGENT_LLM_PROVIDER | ollama | LLM provider: `ollama`, `pydanticai`, or `none` |
 | AGENT_LLM_TIMEOUT_S | 8.0 | Timeout in seconds for LLM calls |
 | APP_ENV | development | Application environment |
-| APP_SECRET_KEY | change-me-before-deploy | Flask secret key (change for production) |
+| APP_SECRET_KEY | (random if unset) | Flask secret key (change for production) |
 
 ## Running the Application
 
@@ -113,7 +116,7 @@ docker run -p 5000:5000 --env-file .env struct_analysis
 2. Pull the required model:
 
 ```bash
-ollama pull gemma4:latest
+ollama pull glm-4.7-flash:latest
 ```
 
 3. Start the Ollama server (runs on `http://localhost:11434` by default)
@@ -128,7 +131,7 @@ If using a remote Ollama server:
 ### LLM Provider Options
 
 - **ollama**: Direct HTTP calls to Ollama `/api/generate` endpoint
-- **ollamai**: Uses Ollama Python library with OpenAI-compatible `/v1` endpoint (better structured output support)
+- **pydanticai**: Uses the PydanticAI adapter with an OpenAI-compatible client (better structured output support); falls back to `ollama` if the adapter is unavailable
 - **none**: Disables LLM features, uses deterministic fallbacks only
 
 ## Running Tests
@@ -141,12 +144,21 @@ $env:PYTHONPATH='.'; pytest
 
 ### Test Coverage
 
-16 integration tests covering:
-- Chat route: analysis requests, conversation-only, canvas actions, context-aware queries, evaluate endpoint
+The suite (290+ tests) covers the full surface:
+- Chat/analysis routes: analysis requests, conversation-only, canvas actions, context-aware queries, evaluate endpoint
 - Project persistence: CRUD operations
 - LLM status: response format
-- Context-aware chat: model summarization
-- 3D frame template canvas action
+- Deterministic load tools: wind, seismic, snow, slab
+- Element design: steel section selection, concrete, timber, foundation, fatigue, cost
+- Advanced analysis: P-delta, response spectrum, story forces, sensitivity, multi-hazard, cross-validation
+- 3D frame OpenSeesPy solver and solver fallback chains
+- OpenAPI spec generation and PDF export
+
+Run with coverage (the CI gate requires 80%+):
+
+```powershell
+$env:PYTHONPATH='.'; pytest --cov=app --cov-report=term --cov-fail-under=80
+```
 
 ## Project Structure
 
@@ -162,22 +174,42 @@ struct_analysis/
 │   ├── logging_config.py    # Structured logging setup
 │   ├── routes/
 │   │   ├── __init__.py
-│   │   ├── pages.py         # Static page routes
-│   │   ├── analyze.py       # Analysis & chat API routes
+│   │   ├── pages.py         # Static page routes, health, OpenAPI spec + docs
+│   │   ├── analyze.py       # Analysis & chat API routes (+ sensitivity, multi-hazard)
+│   │   ├── design.py        # Steel/concrete/timber/foundation/fatigue/cost design
+│   │   ├── loads.py         # Wind/seismic/snow/slab/response-spectrum/P-delta
 │   │   ├── projects.py      # Project CRUD API routes
-│   │   ├── history.py       # History & export API routes
+│   │   ├── history.py       # History & export (CSV/report/PDF) API routes
 │   │   └── sections.py      # Steel section database routes
 │   ├── tools/               # Engineering analysis tools
 │   │   ├── __init__.py
 │   │   ├── beam.py          # Closed-form beam analysis
 │   │   ├── opensees_beam.py # OpenSeesPy beam solver
-│   │   ├── truss.py         # Truss analysis (matrix stiffness)
-│   │   ├── frame.py         # 2D frame analysis (OpenSeesPy)
+│   │   ├── truss.py         # Truss analysis (OpenSeesPy + direct stiffness)
+│   │   ├── frame.py         # 2D frame analysis (OpenSeesPy + direct stiffness)
 │   │   ├── column.py        # Column buckling analysis
 │   │   ├── opensees_3d.py   # 3D structure analysis
-│   │   ├── load_combinations.py  # ASCE 7 load combinations
 │   │   ├── sections.py      # Steel section database
-│   │   └── report.py        # Report formatter
+│   │   ├── section_select.py# AISC 360 steel section selection
+│   │   ├── load_combinations.py  # ASCE 7-22 load combinations
+│   │   ├── wind.py          # ASCE 7-22 wind loads
+│   │   ├── seismic.py       # ASCE 7-22 seismic base shear
+│   │   ├── snow.py          # ASCE 7-22 snow loads
+│   │   ├── slab.py          # ACI 318 two-way slab
+│   │   ├── story_forces.py  # Map story forces onto a 3D model
+│   │   ├── response_spectrum.py  # Multi-mode response-spectrum analysis
+│   │   ├── pdelta.py        # P-delta second-order effects
+│   │   ├── concrete.py      # ACI 318 concrete beam/column design
+│   │   ├── timber.py        # NDS timber beam design
+│   │   ├── foundation.py    # Spread footing + pile capacity
+│   │   ├── fatigue.py       # AISC 360 fatigue S-N check
+│   │   ├── cost.py          # Steel cost estimation
+│   │   ├── sensitivity.py   # OAT parametric sensitivity study
+│   │   ├── multi_hazard.py  # Multi-hazard load-combination optimizer
+│   │   ├── cross_validation.py  # Independent-solver cross-validation
+│   │   ├── report.py        # Report formatter
+│   │   ├── pdf_export.py    # Markdown -> PDF writer
+│   │   └── openapi.py       # OpenAPI 3.0 spec generator
 │   └── static/              # Frontend assets
 │       ├── index.html       # Application shell
 │       ├── styles.css       # Complete design system
@@ -211,7 +243,7 @@ If LLM calls timeout:
 1. Verify Ollama server is running: `curl http://localhost:11434/api/tags`
 2. Check `OLLAMA_BASE_URL` is correct
 3. Increase `AGENT_LLM_TIMEOUT_S` if needed
-4. Try switching to `ollamai` provider
+4. Try switching to the `pydanticai` provider
 
 ### SQLite Database Lock
 

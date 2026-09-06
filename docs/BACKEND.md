@@ -9,26 +9,46 @@ app/
 ├── config.py            # PydanticSettings from .env
 ├── models.py            # Pydantic v2 request/response schemas
 ├── agents.py            # Multi-agent orchestration, context summarizer, canvas router
-├── llm.py               # LLM client implementations (Ollama, OllamaAI, disabled)
+├── llm.py               # LLM client implementations (Ollama, PydanticAI, disabled)
 ├── logging_config.py    # Structured logging setup
 ├── routes/
 │   ├── __init__.py
-│   ├── pages.py         # Static page routes (/ , /health)
-│   ├── analyze.py       # Analysis & chat API routes
+│   ├── pages.py         # Static page routes (/ , /health), OpenAPI spec + docs page
+│   ├── analyze.py       # Analysis & chat API routes (+ load-combos, sensitivity, multi-hazard, validate)
+│   ├── design.py        # Steel/concrete/timber/foundation/fatigue/cost design routes
+│   ├── loads.py         # Wind/seismic/snow/slab/response-spectrum/P-delta/story-forces/cross-validation
 │   ├── projects.py      # Project CRUD API routes
-│   ├── history.py       # History & export API routes
+│   ├── history.py       # History & export (CSV/report/PDF) API routes
 │   └── sections.py      # Steel section database API routes
 ├── tools/
 │   ├── __init__.py
 │   ├── beam.py          # Closed-form beam analysis
 │   ├── opensees_beam.py # OpenSeesPy beam solver
-│   ├── truss.py         # Truss analysis (matrix stiffness)
-│   ├── frame.py         # 2D frame analysis (OpenSeesPy)
+│   ├── truss.py         # Truss analysis (OpenSeesPy + direct stiffness)
+│   ├── frame.py         # 2D frame analysis (OpenSeesPy + direct stiffness)
 │   ├── column.py        # Column buckling analysis
 │   ├── opensees_3d.py   # 3D structure analysis
 │   ├── sections.py      # Steel section database
+│   ├── section_select.py# AISC 360 steel section selection (incl. LTB)
 │   ├── report.py        # Report formatter
-│   └── load_combinations.py  # ASCE 7 load combination generator
+│   ├── pdf_export.py    # Markdown -> PDF writer
+│   ├── load_combinations.py  # ASCE 7-22 load combination generator
+│   ├── wind.py          # ASCE 7-22 wind loads
+│   ├── seismic.py       # ASCE 7-22 seismic base shear
+│   ├── snow.py          # ASCE 7-22 snow loads
+│   ├── slab.py          # ACI 318 two-way slab
+│   ├── story_forces.py  # Map wind/seismic story forces onto a 3D model
+│   ├── response_spectrum.py  # Multi-mode response-spectrum analysis
+│   ├── pdelta.py        # P-delta drift amplification + equivalent lateral forces
+│   ├── concrete.py      # ACI 318 concrete beam/column design
+│   ├── timber.py        # NDS timber beam design
+│   ├── foundation.py    # Spread footing + pile capacity
+│   ├── fatigue.py       # AISC 360 fatigue S-N check
+│   ├── cost.py          # Steel cost estimation
+│   ├── sensitivity.py   # OAT parametric sensitivity study
+│   ├── multi_hazard.py  # Multi-hazard load-combination optimizer
+│   ├── cross_validation.py  # Independent-solver cross-validation suite
+│   └── openapi.py       # OpenAPI 3.0 spec generator
 └── static/              # Frontend assets
 ```
 
@@ -39,34 +59,33 @@ The Flask application factory that initializes all components.
 ### Key Components
 
 - **Flask app factory**: `get_app()` creates and configures the Flask instance
-- **SQLite databases**:
-  - `analysis_history.db` - Stores analysis results with schema: id, timestamp, analysis_type, prompt, results_json, report_markdown
-  - `projects.db` - Stores user projects with schema: id (UUID), name, model (JSON), results (JSON), created_at, updated_at
-- **Blueprint registration**: Registers route blueprints from `routes/pages.py`, `routes/analyze.py`, `routes/projects.py`, `routes/history.py`, `routes/sections.py`
+- **SQLite database**: a single `analysis_history.db` file (project root) holding two tables:
+  - `history` - analysis results: id, timestamp (epoch), analysis_type, prompt, results_json, report_markdown
+  - `projects` - user projects: id (UUID), updated_at (epoch), project_json (full payload)
+- **Blueprint registration**: Registers route blueprints from `routes/pages.py`, `routes/analyze.py`, `routes/design.py`, `routes/loads.py`, `routes/projects.py`, `routes/history.py`, `routes/sections.py`
 - **LLM status check**: `_check_llm_status()` pings Ollama `/api/tags` to verify provider reachability
 - **LLM client**: `_get_llm_client()` creates the configured LLM client based on `AGENT_LLM_PROVIDER`
 
 ### Database Schema
 
+Both tables live in a single SQLite file (`analysis_history.db` at the project root).
+
 ```sql
 -- Analysis history
-CREATE TABLE analysis_history (
+CREATE TABLE history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp TEXT NOT NULL,
+    timestamp REAL NOT NULL,
     analysis_type TEXT NOT NULL,
     prompt TEXT NOT NULL,
-    results_json TEXT,
-    report_markdown TEXT
+    results_json TEXT NOT NULL,
+    report_markdown TEXT NOT NULL
 );
 
--- Projects
+-- Projects (full project payload stored as JSON)
 CREATE TABLE projects (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    model TEXT NOT NULL,
-    results TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at REAL NOT NULL,
+    project_json TEXT NOT NULL
 );
 ```
 
@@ -82,6 +101,11 @@ The main API routes for analysis and chat functionality.
 | `/api/chat/evaluate` | POST | Evaluate existing analysis results |
 | `/api/analyze` | POST | Run analysis from natural language prompt |
 | `/api/analyze/structure` | POST | Analyze a drawn structure model |
+| `/api/analyze/structure-with-loads` | POST | Apply wind/seismic story forces to a drawn 3D model and analyze |
+| `/api/analyze/sensitivity` | POST | OAT parametric sensitivity study (beam) |
+| `/api/analyze/multi-hazard` | POST | Multi-hazard load-combination optimizer |
+| `/api/load-combinations` | POST | ASCE 7-22 factored load combinations |
+| `/api/validate` | POST | Validate a model payload without running analysis |
 | `/api/llm-status` | GET | Check LLM provider connectivity |
 
 ### Chat Request Classification
@@ -114,6 +138,41 @@ The `CanvasRouterAgent` routes chat messages to canvas tool actions:
 - `clear_canvas` - Clear entire canvas
 - `draw_simple_beam` - Draw a simple beam
 - `run_current_analysis` - Run analysis on current model
+- `apply_story_forces` - Apply wind/seismic story forces to the drawn 3D model and analyze
+
+## app/routes/design.py - Element Design Routes
+
+Deterministic code design checks (no LLM). Each route validates a Pydantic input model and returns `{"status": "ok", "results": ...}`.
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/design/beam` | POST | AISC 360 steel beam section selection (incl. LTB) |
+| `/api/design/column` | POST | AISC 360 steel column section selection |
+| `/api/design/concrete-beam` | POST | ACI 318 singly-reinforced concrete beam design |
+| `/api/design/concrete-column` | POST | ACI 318 circular tied/spiral column design |
+| `/api/design/timber-species` | GET | List timber species with NDS design values |
+| `/api/design/timber-beam` | POST | NDS rectangular timber beam design |
+| `/api/design/spread-footing` | POST | ACI 318 square spread footing sizing + checks |
+| `/api/design/pile` | POST | Static pile capacity + group efficiency |
+| `/api/design/fatigue-categories` | GET | List AISC 360 fatigue categories (A–E) |
+| `/api/design/fatigue` | POST | AISC 360 fatigue S-N check |
+| `/api/design/cost` | POST | Steel cost estimation from a member takeoff |
+
+## app/routes/loads.py - Load Determination Routes
+
+Deterministic load tools and second-order/advanced analysis (no LLM).
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/loads/wind` | POST | ASCE 7-22 wind loads (MWFRS) |
+| `/api/loads/seismic` | POST | ASCE 7-22 seismic base shear |
+| `/api/loads/snow` | POST | ASCE 7-22 snow loads |
+| `/api/loads/slab` | POST | ACI 318 two-way slab analysis |
+| `/api/loads/response-spectrum` | POST | Multi-mode response-spectrum analysis on a 3D model |
+| `/api/loads/apply-story-forces` | POST | Map wind/seismic story forces onto a drawn 3D model |
+| `/api/loads/pdelta-amplify` | POST | P-delta drift amplification (ASCE 7 stability coefficient) |
+| `/api/loads/pdelta-forces` | POST | P-delta equivalent lateral forces on a drawn 3D model |
+| `/api/loads/cross-validation` | POST | Independent-solver cross-validation suite |
 
 ## app/routes/projects.py - Project Persistence
 
@@ -133,9 +192,10 @@ Projects store the full model state and analysis results, enabling cross-browser
 | Route | Method | Description |
 |-------|--------|-------------|
 | `/api/history` | GET | Get paginated analysis history |
-| `/api/history/<id>` | GET | Get specific history record |
+| `/api/history/<item_id>` | GET | Get specific history record |
 | `/api/export/csv` | POST | Export analysis as CSV |
 | `/api/export/report` | POST | Export analysis as markdown |
+| `/api/export/pdf` | POST | Export analysis report as PDF |
 
 ## app/routes/sections.py - Section Database Routes
 
@@ -149,7 +209,9 @@ Projects store the full model state and analysis results, enabling cross-browser
 | Route | Method | Description |
 |-------|--------|-------------|
 | `/` | GET | Serve index.html |
-| `/health` | GET | Health check |
+| `/health` | GET | Health check (DB + NumPy/OpenSees availability) |
+| `/api/openapi.json` | GET | Auto-generated OpenAPI 3.0 spec |
+| `/api/docs` | GET | Self-contained interactive API docs page |
 
 ## app/agents.py - Multi-Agent System
 
@@ -226,10 +288,34 @@ All request/response models and input schemas using Pydantic v2.
 
 - **Support3D**: ux, uy, uz, rx, ry, rz (boolean DOF constraints)
 - **Node3D**: id, x, y, z, support
-- **Member3D**: id, start_node, end_node, area_m2, iy_m4, iz_m4, j_m4, elastic_modulus_gpa, shear_modulus_gpa
-- **Load3D**: node_id, fx_kn, fy_kn, fz_kn, mx_kn_m, my_kn_m, mz_kn_m
-- **MemberLoad3D**: member_id, wy_kn_per_m, wz_kn_per_m
-- **Structure3DInputs**: nodes, members, nodal_loads, member_loads
+- **Member3D**: id, start_node, end_node, area_m2, iy_m4, iz_m4, j_m4, elastic_modulus_gpa, shear_modulus_gpa, group
+- **Load3D**: node_id, case, fx_kn, fy_kn, fz_kn, mx_kn_m, my_kn_m, mz_kn_m
+- **MemberLoad3D**: member_id, case, wy_kn_per_m, wz_kn_per_m
+- **LoadCombination3D**: name, factors (dict of load-case factors)
+- **Structure3DInputs**: nodes, members, nodal_loads, member_loads, load_combinations, active_load_combination, rigid_diaphragms
+
+### Load Determination Inputs
+
+- **WindInputs**: basic_wind_speed_ms, exposure, height_m, length_m, width_m, story_height_m, internal_pressure, topographic_factor, air_density_factor
+- **SeismicInputs**: spectral_accel_sd, spectral_accel_1s, site_class, risk_category, building_weight_kn, fundamental_period_s, height_m, structural_system, importance_factor, response_modification, deflection_amplifier
+- **SnowInputs**: ground_snow_load_kpa, exposure, thermal, risk_category, roof_slope_deg, drift
+- **SlabInputs**: span_x_m, span_y_m, thickness_m, dead_load_kpa, live_load_kpa, concrete_fck_mpa, steel_fy_mpa, support_condition, deflection_limit_ratio
+
+### Element Design Inputs
+
+- **BeamSelectionInputs**: moment_kn_m, shear_kn, unbraced_length_m, cb, fy_mpa
+- **ColumnSelectionInputs**: axial_load_kn, kl_m, fy_mpa
+- **ConcreteBeamInputs**: moment_kn_m, shear_kn, width_mm, depth_mm, effective_depth_mm, concrete_fck_mpa, steel_fy_mpa, bar_dia_mm, stirrup_dia_mm
+- **ConcreteColumnInputs**: axial_load_kn, diameter_mm, concrete_fck_mpa, steel_fy_mpa, tied, kl_r
+- **TimberBeamInputs**: species, width_mm, depth_mm, moment_kn_m, shear_kn, span_m, unbraced_length_m, duration, moisture_pct, temperature_c, live_load_fraction
+- **SpreadFootingInputs**: axial_load_kn, factored_axial_kn, allowable_bearing_kpa, column_width_mm, column_depth_mm, concrete_fck_mpa, steel_fy_mpa, footing_depth_mm, bar_dia_mm, footing_width_mm
+- **PileInputs**: pile_diameter_mm, pile_length_m, skin_friction_kpa, skin_friction_alpha, end_bearing_kpa, factor_of_safety, piles_per_row, rows_in_group, center_to_center_spacing_m
+- **FatigueInputs**: category, stress_range_mpa, num_cycles
+
+### Advanced Analysis Inputs
+
+- **SensitivityInputs**: base + min/max bounds for load/span/modulus/inertia/section, and a `parameters` list (w, L, E, I, S)
+- **MultiHazardInputs**: dead/live/wind/snow/earthquake loads, response_factor, capacity, method, per-component sweep bounds, and a `components` list
 
 ### Response Models
 
@@ -247,7 +333,7 @@ Three LLM client implementations with a unified `generate(system, prompt)` inter
 
 1. **DisabledLLMClient**: Raises RuntimeError on any call. Used when `agent_llm_provider=none`.
 2. **OllamaClient**: Direct HTTP POST to Ollama `/api/generate` endpoint with temperature=0.1
-3. **OllamaAIClient**: Uses Ollama library with OpenAI-compatible client for structured output
+3. **PydanticAIClient**: Uses the PydanticAI adapter with an OpenAI-compatible client for structured output (falls back to `OllamaClient` if the adapter is unavailable)
 
 ## app/config.py - Settings
 
@@ -255,14 +341,14 @@ PydanticSettings loaded from `.env` file with defaults:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| ollama_base_url | http://128.235.163.220:11434 | Ollama server URL |
-| ollama_model | gemma4:latest | Model name |
-| agent_llm_provider | ollama | Provider: ollama, ollamai, none |
+| ollama_base_url | http://localhost:11434 | Ollama server URL |
+| ollama_model | glm-4.7-flash:latest | Model name |
+| agent_llm_provider | ollama | Provider: `ollama`, `pydanticai`, or `none` |
 | agent_llm_timeout_s | 8.0 | Timeout for LLM calls |
 | app_env | development | Environment |
-| app_secret_key | change-me-before-deploy | Flask secret key |
+| app_secret_key | (random 32-byte hex if unset) | Flask secret key |
 
-`get_settings()` is cached with `@lru_cache` for performance.
+`get_settings()` is cached with `@lru_cache` for performance. If `app_secret_key` is not set, a random key is generated at startup.
 
 ## app/logging_config.py - Logging
 

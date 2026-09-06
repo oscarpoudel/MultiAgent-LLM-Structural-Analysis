@@ -41,7 +41,33 @@ This software is intended for research, education, experimentation, and early-st
 - Closed-form beam calculations for fallback and cross-checking
 - 3D frame: base reactions, nodal displacements/rotations, member end forces and envelopes, story drifts, load-combination-controlled results
 - Column buckling check
-- Load combination processing (`1.0D + 1.0L`, `1.2D + 1.6L`, `1.2D + 1.0EX + 0.5L`, `1.2D + 1.0EY + 0.5L`)
+- Load combination processing (ASCE 7-22 LRFD + ASD: `1.0D + 1.0L`, `1.2D + 1.6L`, `1.2D + 1.0EX + 0.5L`, `1.2D + 1.0EY + 0.5L`, and more)
+
+### Load Determination (deterministic, no LLM)
+- **Wind** — ASCE 7-22 simplified MWFRS procedure: velocity pressure, exposure, gust factor, MWFRS pressures, internal pressure, base shear, story forces
+- **Seismic** — ASCE 7-22 equivalent static force procedure: site coefficients, SDS/SD1, Cs, base shear, vertical story-force distribution
+- **Snow** — ASCE 7-22 ground/flat/sloped roof snow load with simplified drift
+- **Slab** — ACI 318 two-way slab coefficients, reinforcement, and deflection checks
+- **Response spectrum** — multi-mode (Cantilever) SRSS analysis of a 3D model from vertical-member story stiffness
+- **Story-force application** — map wind/seismic story forces onto the drawn 3D model as nodal loads, then analyze
+
+### Element Design & Code Checks (deterministic, no LLM)
+- **Steel section selection** — AISC 360: lightest adequate W-shape for flexure (incl. LTB, AISC F2) + shear, or axial (AISC E3)
+- **Concrete design** — ACI 318 singly-reinforced beam (flexure, shear, stirrup spacing) and circular tied/spiral column
+- **Timber design** — NDS rectangular beam with CD/CM/Ct/CF/CL factors, flexure/shear/stability/deflection
+- **Foundations** — ACI 318 spread footing (bearing, one-way + punching shear, flexure) and static pile capacity (skin friction + end bearing, group efficiency)
+- **Fatigue** — AISC 360 S-N curves (categories A–E), life check, allowable stress range
+- **Cost estimation** — steel takeoff (section + length) with fabrication/erection factors
+
+### Second-Order & Advanced Analysis
+- **P-delta** — ASCE 7 stability-coefficient (θ = V·h/W) drift amplification + P-delta equivalent lateral forces for iterative second-order analysis
+- **Sensitivity study** — OAT parametric study on a beam (moment/deflection/stress) with elasticity sensitivity coefficients and parameter ranking
+- **Multi-hazard optimizer** — evaluates all ASCE 7 LRFD/ASD combinations against a member capacity and finds the worst-case scenario
+- **Cross-validation** — compares closed-form, OpenSeesPy FEM, and direct-stiffness solvers on benchmark models
+
+### API Documentation
+- Auto-generated **OpenAPI 3.0** spec from live Flask routes + Pydantic models (`GET /api/openapi.json`)
+- Self-contained interactive docs page (`GET /api/docs`)
 
 ### Project Persistence
 - Server-backed project storage with SQLite — cross-browser (Chrome, Firefox, Edge)
@@ -67,7 +93,7 @@ The solver paths support preliminary linear elastic analysis for **beams**, **tr
 - Deformed shape and member force overlays
 - CSV and Markdown exports with detailed nested result data
 
-The 3D workflow is intended for ETABS-style preliminary comparison, not final design. Current limitations include no P-Delta analysis, no automatic code design checks, limited member release handling, and simplified section assignment.
+The 3D workflow is intended for ETABS-style preliminary comparison, not final design. In addition to first-order elastic analysis, the app now supports **P-delta second-order effects** (ASCE 7 stability-coefficient drift amplification + P-delta equivalent lateral forces) and **deterministic code design checks** (AISC 360 steel section selection with LTB, ACI 318 concrete beam/column, NDS timber, spread footing and pile foundations, and AISC 360 fatigue). Remaining limitations include limited member release handling, simplified section assignment, and preliminary (not construction-ready) detailing.
 
 ---
 
@@ -88,9 +114,11 @@ app/
   models.py            Pydantic request/response models (Chat, Analyze, Canvas, etc.)
   logging_config.py    Structured logging (JSON + console)
   routes/
-    analyze.py         Chat, analyze, evaluate, llm-status endpoints
-    history.py         Analysis history CRUD
-    pages.py           Static page serving
+    analyze.py         Chat, analyze, evaluate, llm-status, load-combos, sensitivity, multi-hazard, validate
+    design.py          Steel/concrete/timber/foundation/fatigue/cost design endpoints
+    loads.py           Wind, seismic, snow, slab, response-spectrum, P-delta, story-forces, cross-validation
+    history.py         Analysis history + CSV/report/PDF export
+    pages.py           Static page serving, health check, OpenAPI spec + docs page
     projects.py        Project CRUD with SQLite
     sections.py        AISC section lookup
   static/
@@ -119,9 +147,26 @@ app/
     truss.py           2D truss analysis
     column.py          Column buckling check
     sections.py        AISC database and section properties
-    load_combinations.py Load combination processing
+    section_select.py  AISC 360 steel beam/column section selection (incl. LTB)
+    load_combinations.py ASCE 7-22 load combination processing
     report.py          Markdown report formatter
-    opensees_beam.py   OpenSeesPy beam solver
+    pdf_export.py      Dependency-free Markdown -> PDF writer
+    wind.py            ASCE 7-22 wind loads
+    seismic.py         ASCE 7-22 seismic base shear
+    snow.py            ASCE 7-22 snow loads
+    slab.py            ACI 318 two-way slab
+    story_forces.py    Map wind/seismic story forces onto a 3D model
+    response_spectrum.py Multi-mode response-spectrum analysis
+    pdelta.py          P-delta drift amplification + equivalent lateral forces
+    concrete.py        ACI 318 concrete beam/column design
+    timber.py          NDS timber beam design
+    foundation.py      Spread footing + pile capacity
+    fatigue.py         AISC 360 fatigue S-N check
+    cost.py            Steel cost estimation
+    sensitivity.py     OAT parametric sensitivity study
+    multi_hazard.py    Multi-hazard load-combination optimizer
+    cross_validation.py Independent-solver cross-validation suite
+    openapi.py         OpenAPI 3.0 spec generator
 scripts/
   debug_chat.py        CLI debugger for chat routing
   run.py               Alternative entry point
@@ -130,6 +175,23 @@ tests/
   test_beam_tool.py    Beam calculation tests
   test_all_tools.py    Cross-tool test suite
   test_opensees_3d.py  3D frame OpenSeesPy tests
+  test_loads.py        Wind/seismic/snow/slab load tools
+  test_section_select.py  Steel section selection
+  test_concrete.py     Concrete beam/column design
+  test_timber.py       Timber beam design
+  test_foundation.py   Spread footing + pile capacity
+  test_fatigue.py      Fatigue S-N check
+  test_cost.py         Cost estimation
+  test_sensitivity.py  Sensitivity study
+  test_multi_hazard.py Multi-hazard optimizer
+  test_pdelta.py       P-delta amplification
+  test_response_spectrum.py  Response-spectrum analysis
+  test_story_forces.py Story-force application
+  test_cross_validation.py   Cross-validation suite
+  test_openapi.py      OpenAPI spec generation
+  test_pdf_export.py   PDF export
+  test_reports.py      Report formatting
+  test_fallbacks.py    Solver fallback chains
 ```
 
 ---
@@ -246,6 +308,13 @@ Invoke-RestMethod -Uri http://127.0.0.1:5000/api/llm-status
 ```powershell
 Invoke-RestMethod -Uri http://127.0.0.1:5000/api/projects
 ```
+
+### API documentation
+
+A machine-readable OpenAPI 3.0 spec and a self-contained interactive docs page are generated from the live routes:
+
+- `GET /api/openapi.json` — OpenAPI 3.0 spec
+- `GET /api/docs` — interactive docs page (filter, expand/collapse, per-operation request/response schemas)
 
 ---
 
