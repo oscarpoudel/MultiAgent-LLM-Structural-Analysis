@@ -56,4 +56,4 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [ ] Stability (lateral-torsional buckling) checks
 - [ ] Multi-hazard load combination optimizer
 - [x] Cost estimation from section selection — `app/tools/cost.py` + `/api/design/cost` + UI.
-- [ ] Sensitivity analysis (parametric study)
+- [x] Sensitivity analysis (parametric study) — `app/tools/sensitivity.py` + `/api/analyze/sensitivity` + UI.

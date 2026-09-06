@@ -15,7 +15,6 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 
 ## Active TODO
 - [ ] Multi-hazard load combination optimizer.
-- [ ] Sensitivity analysis (parametric study).
 
 ## Completed
 - [x] Response spectrum (Cantilever) analysis: app/tools/response_spectrum.py — ASCE 7-22 design spectrum (Eq. 11.4-1..6), lumped floor-mass shear-building/cantilever idealization built from vertical members (3EI/L³ free, 12EI/L³ with rigid diaphragms), numpy eigendecomposition, modal participation factors, SRSS combination of modal floor forces/shears/displacements, drift ratios. POST /api/loads/response-spectrum. Loads tab "Response Spectrum" subtab (SDS/SD1/W/direction/modes/TL) wired to the current 3D model. Fixed ASCE 7 Ts bug in seismic.py (was SDS/SD1, now SD1/SDS). 6 tool+route tests. Test count 199 -> 206.
@@ -27,6 +26,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Cost estimation from section selection: app/tools/cost.py — steel cost estimate from a member takeoff (section + length per group), weights resolved from the section database (weight_kg_per_m * length_m), material cost = total_weight_kg * price_per_kg, total = material * fab_factor * erect_factor, cost_per_ton, unknown sections skipped with warnings, input validation. POST /api/design/cost. UI: Sections tab "Cost Estimate" subtab (takeoff form + results table). 7 tests. Test count 223 -> 230; coverage 82.64% -> 82.83%.
 - [x] Timber design (NDS): app/tools/timber.py — NDS 2024 ASD timber beam design. Reference design values (Fb/Fv/E) for 6 species (Supplement Table 4A), adjustment factors CD (duration, Table 2.3.2), CM (wet service), Ct (temperature), CF (size, (3/d)^(1/9)), CL (beam stability, Section 3.7.4 with rb/fbe). Checks: flexure (M/S vs Fb'), shear (1.5V/A vs Fv'), deflection (5ML²/48EI vs L/240 total, L/360 live). Routes GET /api/design/timber-species + POST /api/design/timber-beam. UI: Sections tab "Timber Design" subtab (species/section/loads/duration/moisture form + checks table + PASS/FAIL). 12 tests. Test count 230 -> 242; coverage 82.83% -> 82.95%.
 - [x] Foundation design (footing + pile): app/tools/foundation.py — ACI 318-19 spread footing (bearing sizing from allowable capacity, one-way & punching shear at critical sections, flexure with iterated stress-block depth, bar count/spacing) + static pile capacity (skin friction alpha*f*A_shaft + end bearing q_p*A_p, FS, Converse-Labarre group efficiency). Routes POST /api/design/spread-footing + POST /api/design/pile. UI: Sections tab "Foundation" subtab (Spread Footing / Pile Capacity forms + checks/capacity tables). 16 tests. Test count 242 -> 258; coverage 82.95% -> 83.35%.
+- [x] Sensitivity analysis (parametric study): app/tools/sensitivity.py — OAT parametric study on a simply-supported beam (Roark's M=wL²/8, δ=5wL⁴/384EI, σ=M/S). Sweeps w/L/E/I/S over user ranges, reports swept responses + elasticity (log-log) sensitivity coefficients S=(dr/dp)(p/r) via central difference at the base point, plus a parameter ranking by max |S|. Validated: load→1.0, span→4.0 (deflection), E/I→-1.0. POST /api/analyze/sensitivity. UI: Loads tab "Sensitivity" subtab (base + ranges + parameter checkboxes + ranking/sweep tables). 10 tests. Test count 258 -> 268; coverage 83.35% -> 83.55%.
 - [x] Created progress.md.
 - [x] Checkpoint: lint/import-ordering pass (all tests green).
 - [x] Wrote docs/Roadmap.md with prioritized roadmap.
@@ -57,7 +57,7 @@ Build StructAgent into a full deterministic-first structural engineering softwar
 - [x] Foundation design (footing, pile).
 - [ ] Multi-hazard load combination optimizer.
 - [x] Cost estimation from section selection.
-- [ ] Sensitivity analysis (parametric study).
+- [x] Sensitivity analysis (parametric study).
 
 ## Blocked
 - None.

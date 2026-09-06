@@ -349,6 +349,32 @@ class PileInputs(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Sensitivity analysis inputs (parametric study)
+# ---------------------------------------------------------------------------
+
+class SensitivityInputs(BaseModel):
+    load_kn_m: float = Field(..., gt=0, description="Base uniform load w (kN/m)")
+    span_m: float = Field(..., gt=0, description="Base span L (m)")
+    modulus_gpa: float = Field(..., gt=0, description="Base modulus of elasticity E (GPa)")
+    inertia_m4: float = Field(..., gt=0, description="Base moment of inertia I (m^4)")
+    section_modulus_m3: float = Field(..., gt=0, description="Base section modulus S (m^3)")
+    load_min_kn_m: float = Field(..., ge=0, description="Min load w (kN/m)")
+    load_max_kn_m: float = Field(..., ge=0, description="Max load w (kN/m)")
+    span_min_m: float = Field(..., ge=0, description="Min span L (m)")
+    span_max_m: float = Field(..., ge=0, description="Max span L (m)")
+    modulus_min_gpa: float = Field(..., ge=0, description="Min modulus E (GPa)")
+    modulus_max_gpa: float = Field(..., ge=0, description="Max modulus E (GPa)")
+    inertia_min_m4: float = Field(..., ge=0, description="Min inertia I (m^4)")
+    inertia_max_m4: float = Field(..., ge=0, description="Max inertia I (m^4)")
+    section_min_m3: float = Field(..., ge=0, description="Min section modulus S (m^3)")
+    section_max_m3: float = Field(..., ge=0, description="Max section modulus S (m^3)")
+    parameters: list[str] = Field(
+        default_factory=lambda: ["w", "L", "E", "I", "S"],
+        description="Parameters to sweep: w, L, E, I, S",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Agent trace / responses
 # ---------------------------------------------------------------------------
 

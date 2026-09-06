@@ -178,6 +178,14 @@ export function designPile(inputs) {
   });
 }
 
+export function runSensitivityStudy(inputs) {
+  return jsonRequest('/api/analyze/sensitivity', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
 export function pdeltaAmplify(payload) {
   return jsonRequest('/api/loads/pdelta-amplify', {
     method: 'POST',

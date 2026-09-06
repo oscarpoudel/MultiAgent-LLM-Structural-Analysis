@@ -9,6 +9,7 @@ import {
   calculateSnowLoads,
   analyzeStructureWithLoads,
   pdeltaAmplify,
+  runSensitivityStudy,
 } from './api.js';
 
 export function initLoads() {
@@ -34,6 +35,10 @@ export function initLoads() {
   byId('pdeltaForm').addEventListener('submit', (e) => {
     e.preventDefault();
     runPdelta();
+  });
+  byId('sensitivityForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    runSensitivity();
   });
 }
 
@@ -186,6 +191,76 @@ function renderPdelta(r) {
     </div>
     <h4>Story Drifts (1st → 2nd order)</h4>
     <table class="loads-table"><thead><tr><th>Story</th><th>1st (mm)</th><th>2nd (mm)</th><th>Factor</th></tr></thead><tbody>${rows}</tbody></table>
+    ${warnings(r.warnings)}`;
+}
+
+async function runSensitivity() {
+  const parameters = [];
+  if (byId('snPW').checked) parameters.push('w');
+  if (byId('snPL').checked) parameters.push('L');
+  if (byId('snPE').checked) parameters.push('E');
+  if (byId('snPI').checked) parameters.push('I');
+  if (byId('snPS').checked) parameters.push('S');
+  const inputs = {
+    load_kn_m: num('snW'),
+    span_m: num('snL'),
+    modulus_gpa: num('snE'),
+    inertia_m4: num('snI'),
+    section_modulus_m3: num('snS'),
+    load_min_kn_m: num('snWmin'),
+    load_max_kn_m: num('snWmax'),
+    span_min_m: num('snLmin'),
+    span_max_m: num('snLmax'),
+    modulus_min_gpa: num('snEmin'),
+    modulus_max_gpa: num('snEmax'),
+    inertia_min_m4: num('snImin'),
+    inertia_max_m4: num('snImax'),
+    section_min_m3: num('snSmin'),
+    section_max_m3: num('snSmax'),
+    parameters,
+  };
+  const el = byId('loadsResults');
+  if (!parameters.length) {
+    el.innerHTML = '<div class="loads-error"><strong>No parameters</strong><p>Select at least one parameter to sweep.</p></div>';
+    return;
+  }
+  el.innerHTML = '<p class="placeholder">Running sensitivity study…</p>';
+  const data = await runSensitivityStudy(inputs);
+  if (data.status !== 'ok') return renderError(data);
+  renderSensitivity(data.results);
+}
+
+function renderSensitivity(r) {
+  const el = byId('loadsResults');
+  const base = r.base_response;
+  const rankRows = (r.ranking || []).map((x, i) =>
+    `<tr><td>${i + 1}</td><td>${x.parameter}</td><td>${x.max_abs_sensitivity}</td></tr>`
+  ).join('');
+  let studyHtml = '';
+  for (const [field, d] of Object.entries(r.study)) {
+    const s = d.sensitivity;
+    const sweepRows = d.sweep.map((row) =>
+      `<tr><td>${row.param_value}</td><td>${row.moment_kn_m}</td><td>${(row.deflection_m * 1000).toFixed(3)}</td><td>${row.stress_kpa}</td></tr>`
+    ).join('');
+    studyHtml += `
+      <h4>${d.label} (base ${d.base}, range ${d.min} → ${d.max})</h4>
+      <div class="loads-props">
+        ${kv('∂M/∂p', s.moment_kn_m ?? '—')}
+        ${kv('∂δ/∂p', s.deflection_m ?? '—')}
+        ${kv('∂σ/∂p', s.stress_kpa ?? '—')}
+      </div>
+      <table class="loads-table"><thead><tr><th>${d.label}</th><th>M (kN-m)</th><th>δ (mm)</th><th>σ (kPa)</th></tr></thead><tbody>${sweepRows}</tbody></table>`;
+  }
+  el.innerHTML = `
+    <h3>Parametric Sensitivity — ${r.code_reference}</h3>
+    <div class="loads-props">
+      ${kv('Base M', base.moment_kn_m, 'kN-m')}
+      ${kv('Base δ', (base.deflection_m * 1000).toFixed(3), 'mm')}
+      ${kv('Base σ', base.stress_kpa, 'kPa')}
+    </div>
+    <h4>Parameter Ranking (by max |sensitivity|)</h4>
+    <table class="loads-table"><thead><tr><th>#</th><th>Parameter</th><th>Max |S|</th></tr></thead><tbody>${rankRows}</tbody></table>
+    ${studyHtml}
     ${warnings(r.warnings)}`;
 }
 

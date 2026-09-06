@@ -27,6 +27,7 @@ BODY_MODELS: dict[str, str] = {
     "POST /api/design/timber-beam": "TimberBeamInputs",
     "POST /api/design/spread-footing": "SpreadFootingInputs",
     "POST /api/design/pile": "PileInputs",
+    "POST /api/analyze/sensitivity": "SensitivityInputs",
 }
 
 # Endpoints that take a model + load inputs (free-form body).
@@ -73,6 +74,7 @@ _DESCRIPTIONS: dict[str, str] = {
     "POST /api/design/timber-beam": "NDS timber beam design (ASD: flexure, shear, stability, deflection).",
     "POST /api/design/spread-footing": "ACI 318 spread footing design (bearing, shear, flexure).",
     "POST /api/design/pile": "Static pile capacity (skin friction + end bearing) and group efficiency.",
+    "POST /api/analyze/sensitivity": "OAT parametric sensitivity study on a beam (moment/deflection/stress).",
     "POST /api/load-combinations": "ASCE 7 factored load combinations.",
     "POST /api/validate": "Validate a structural model payload.",
     "GET /api/sections": "List or search the steel section library.",

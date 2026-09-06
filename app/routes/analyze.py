@@ -12,10 +12,12 @@ from app.models import (
     ChatRequest,
     ChatResponse,
     FrameInputs,
+    SensitivityInputs,
     Structure3DInputs,
     TrussInputs,
 )
 from app.tools.load_combinations import get_controlling_combination, run_all_load_combinations
+from app.tools.sensitivity import run_sensitivity
 
 bp = Blueprint("analyze", __name__)
 log = get_logger(__name__)
@@ -258,6 +260,18 @@ def load_combinations():
     all_combos = run_all_load_combinations(dl, ll, wl, sl, el, method=method)
     controlling = get_controlling_combination(dl, ll, wl, sl, el, method=method)
     return jsonify({"status": "ok", "method": method, "combinations": all_combos, "controlling": controlling})
+
+
+@bp.post("/api/analyze/sensitivity")
+def sensitivity_study():
+    """Run an OAT parametric sensitivity study on a beam (moment/deflection/stress)."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        inputs = SensitivityInputs.model_validate(data)
+    except ValidationError as exc:
+        return jsonify({"status": "error", "message": "Invalid sensitivity inputs", "details": exc.errors()}), 400
+    result = run_sensitivity(inputs)
+    return jsonify({"status": "ok", "results": result})
 
 
 @bp.post("/api/validate")

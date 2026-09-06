@@ -274,6 +274,7 @@
         <button class="loads-subtab" data-loadtab="spectrum">Response Spectrum</button>
         <button class="loads-subtab" data-loadtab="snow">Snow</button>
         <button class="loads-subtab" data-loadtab="pdelta">P-delta</button>
+        <button class="loads-subtab" data-loadtab="sensitivity">Sensitivity</button>
       </div>
     </div>
 
@@ -397,6 +398,41 @@
           <label>Gravity load W (kN)<input type="number" id="pdW" value="8000" step="100" min="1"/></label>
         </div>
         <button type="submit" class="btn-primary">Amplify Drifts (P-delta)</button>
+      </form>
+
+      <!-- SENSITIVITY FORM -->
+      <form id="sensitivityForm" class="loads-form glass hidden" data-loadform="sensitivity">
+        <h3>Parametric Sensitivity (OAT)</h3>
+        <p class="loads-sub">Sweeps each parameter (simply supported beam, uniform load) and reports elasticity sensitivity coefficients: % change in response per % change in parameter.</p>
+        <div class="loads-grid">
+          <label>Load w (kN/m)<input type="number" id="snW" value="10" step="0.5" min="0.1"/></label>
+          <label>Span L (m)<input type="number" id="snL" value="6" step="0.5" min="0.5"/></label>
+          <label>Modulus E (GPa)<input type="number" id="snE" value="200" step="1" min="1"/></label>
+          <label>Inertia I (m4)<input type="number" id="snI" value="0.001" step="0.0001" min="0.00001"/></label>
+          <label>Section S (m3)<input type="number" id="snS" value="0.001" step="0.0001" min="0.00001"/></label>
+        </div>
+        <p class="loads-sub" style="margin-top:8px">Sweep ranges (min → max):</p>
+        <div class="loads-grid">
+          <label>w min<input type="number" id="snWmin" value="5" step="0.5" min="0"/></label>
+          <label>w max<input type="number" id="snWmax" value="15" step="0.5" min="0"/></label>
+          <label>L min<input type="number" id="snLmin" value="4" step="0.5" min="0"/></label>
+          <label>L max<input type="number" id="snLmax" value="8" step="0.5" min="0"/></label>
+          <label>E min (GPa)<input type="number" id="snEmin" value="150" step="1" min="0"/></label>
+          <label>E max (GPa)<input type="number" id="snEmax" value="250" step="1" min="0"/></label>
+          <label>I min (m4)<input type="number" id="snImin" value="0.0005" step="0.0001" min="0"/></label>
+          <label>I max (m4)<input type="number" id="snImax" value="0.002" step="0.0001" min="0"/></label>
+          <label>S min (m3)<input type="number" id="snSmin" value="0.0005" step="0.0001" min="0"/></label>
+          <label>S max (m3)<input type="number" id="snSmax" value="0.002" step="0.0001" min="0"/></label>
+        </div>
+        <p class="loads-sub" style="margin-top:8px">Parameters to sweep:</p>
+        <div class="loads-grid">
+          <label><input type="checkbox" id="snPW" checked/> w (load)</label>
+          <label><input type="checkbox" id="snPL" checked/> L (span)</label>
+          <label><input type="checkbox" id="snPE" checked/> E (modulus)</label>
+          <label><input type="checkbox" id="snPI" checked/> I (inertia)</label>
+          <label><input type="checkbox" id="snPS" checked/> S (section)</label>
+        </div>
+        <button type="submit" class="btn-primary">Run Sensitivity Study</button>
       </form>
     </div>
 
