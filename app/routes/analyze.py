@@ -12,11 +12,13 @@ from app.models import (
     ChatRequest,
     ChatResponse,
     FrameInputs,
+    MultiHazardInputs,
     SensitivityInputs,
     Structure3DInputs,
     TrussInputs,
 )
 from app.tools.load_combinations import get_controlling_combination, run_all_load_combinations
+from app.tools.multi_hazard import optimize_multi_hazard
 from app.tools.sensitivity import run_sensitivity
 
 bp = Blueprint("analyze", __name__)
@@ -271,6 +273,18 @@ def sensitivity_study():
     except ValidationError as exc:
         return jsonify({"status": "error", "message": "Invalid sensitivity inputs", "details": exc.errors()}), 400
     result = run_sensitivity(inputs)
+    return jsonify({"status": "ok", "results": result})
+
+
+@bp.post("/api/analyze/multi-hazard")
+def multi_hazard_optimizer():
+    """Evaluate ASCE 7 combinations against a member capacity and find the worst-case scenario."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        inputs = MultiHazardInputs.model_validate(data)
+    except ValidationError as exc:
+        return jsonify({"status": "error", "message": "Invalid multi-hazard inputs", "details": exc.errors()}), 400
+    result = optimize_multi_hazard(inputs)
     return jsonify({"status": "ok", "results": result})
 
 

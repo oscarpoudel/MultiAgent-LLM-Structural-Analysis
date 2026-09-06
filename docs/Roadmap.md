@@ -54,6 +54,6 @@ Deterministic-first structural engineering assistant. LLM handles routing/conver
 - [x] Foundation design (footing, pile) — `app/tools/foundation.py` + `/api/design/spread-footing` + `/api/design/pile` + UI.
 - [ ] Fatigue analysis
 - [ ] Stability (lateral-torsional buckling) checks
-- [ ] Multi-hazard load combination optimizer
+- [x] Multi-hazard load combination optimizer — `app/tools/multi_hazard.py` + `/api/analyze/multi-hazard` + UI.
 - [x] Cost estimation from section selection — `app/tools/cost.py` + `/api/design/cost` + UI.
 - [x] Sensitivity analysis (parametric study) — `app/tools/sensitivity.py` + `/api/analyze/sensitivity` + UI.

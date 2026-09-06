@@ -349,6 +349,35 @@ class PileInputs(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Multi-hazard load combination optimizer inputs
+# ---------------------------------------------------------------------------
+
+class MultiHazardInputs(BaseModel):
+    dead_load_kn: float = Field(..., ge=0, description="Dead load D (kN)")
+    live_load_kn: float = Field(0.0, ge=0, description="Live load L (kN)")
+    wind_load_kn: float = Field(0.0, ge=0, description="Wind load W (kN)")
+    snow_load_kn: float = Field(0.0, ge=0, description="Snow load S (kN)")
+    earthquake_load_kn: float = Field(0.0, ge=0, description="Earthquake load E (kN)")
+    response_factor: float = Field(1.0, gt=0, description="Response per unit factored load (e.g. kN-m per kN)")
+    capacity: float = Field(..., gt=0, description="Member capacity in the response units (e.g. kN-m)")
+    method: str = Field("lrfd", description="'lrfd' or 'asd'")
+    dead_min_kn: float = Field(0.0, ge=0, description="Min dead load for sweep (kN)")
+    dead_max_kn: float = Field(0.0, ge=0, description="Max dead load for sweep (kN)")
+    live_min_kn: float = Field(0.0, ge=0, description="Min live load for sweep (kN)")
+    live_max_kn: float = Field(0.0, ge=0, description="Max live load for sweep (kN)")
+    wind_min_kn: float = Field(0.0, ge=0, description="Min wind load for sweep (kN)")
+    wind_max_kn: float = Field(0.0, ge=0, description="Max wind load for sweep (kN)")
+    snow_min_kn: float = Field(0.0, ge=0, description="Min snow load for sweep (kN)")
+    snow_max_kn: float = Field(0.0, ge=0, description="Max snow load for sweep (kN)")
+    earthquake_min_kn: float = Field(0.0, ge=0, description="Min earthquake load for sweep (kN)")
+    earthquake_max_kn: float = Field(0.0, ge=0, description="Max earthquake load for sweep (kN)")
+    components: list[str] = Field(
+        default_factory=lambda: ["dl_kn", "ll_kn", "wl_kn", "sl_kn", "el_kn"],
+        description="Components to sweep: dl_kn, ll_kn, wl_kn, sl_kn, el_kn",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Sensitivity analysis inputs (parametric study)
 # ---------------------------------------------------------------------------
 

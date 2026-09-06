@@ -10,6 +10,7 @@ import {
   analyzeStructureWithLoads,
   pdeltaAmplify,
   runSensitivityStudy,
+  runMultiHazard,
 } from './api.js';
 
 export function initLoads() {
@@ -39,6 +40,10 @@ export function initLoads() {
   byId('sensitivityForm').addEventListener('submit', (e) => {
     e.preventDefault();
     runSensitivity();
+  });
+  byId('multiHazardForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    runMultiHazardForm();
   });
 }
 
@@ -261,6 +266,74 @@ function renderSensitivity(r) {
     <h4>Parameter Ranking (by max |sensitivity|)</h4>
     <table class="loads-table"><thead><tr><th>#</th><th>Parameter</th><th>Max |S|</th></tr></thead><tbody>${rankRows}</tbody></table>
     ${studyHtml}
+    ${warnings(r.warnings)}`;
+}
+
+async function runMultiHazardForm() {
+  const components = [];
+  if (byId('mhCD').checked) components.push('dl_kn');
+  if (byId('mhCL').checked) components.push('ll_kn');
+  if (byId('mhCW').checked) components.push('wl_kn');
+  if (byId('mhCS').checked) components.push('sl_kn');
+  if (byId('mhCE').checked) components.push('el_kn');
+  const inputs = {
+    dead_load_kn: num('mhD'),
+    live_load_kn: num('mhL'),
+    wind_load_kn: num('mhW'),
+    snow_load_kn: num('mhS'),
+    earthquake_load_kn: num('mhE'),
+    response_factor: num('mhRf'),
+    capacity: num('mhCap'),
+    method: byId('mhMethod').value,
+    dead_min_kn: num('mhDmin'),
+    dead_max_kn: num('mhDmax'),
+    live_min_kn: num('mhLmin'),
+    live_max_kn: num('mhLmax'),
+    wind_min_kn: num('mhWmin'),
+    wind_max_kn: num('mhWmax'),
+    snow_min_kn: num('mhSmin'),
+    snow_max_kn: num('mhSmax'),
+    earthquake_min_kn: num('mhEmin'),
+    earthquake_max_kn: num('mhEmax'),
+    components,
+  };
+  const el = byId('loadsResults');
+  if (!components.length) {
+    el.innerHTML = '<div class="loads-error"><strong>No components</strong><p>Select at least one component to sweep.</p></div>';
+    return;
+  }
+  el.innerHTML = '<p class="placeholder">Optimizing load combinations…</p>';
+  const data = await runMultiHazard(inputs);
+  if (data.status !== 'ok') return renderError(data);
+  renderMultiHazard(data.results);
+}
+
+function renderMultiHazard(r) {
+  const el = byId('loadsResults');
+  const base = r.base_case;
+  const comboRows = base.combinations.map((c, i) =>
+    `<tr><td>${i + 1}</td><td>${c.combination}</td><td>${c.factored_load_kn}</td><td>${c.response}</td><td>${c.utilization}</td><td>${c.ok ? '✓' : '<strong style="color:var(--danger,#f85149)">✗</strong>'}</td></tr>`
+  ).join('');
+  const sweepHtml = Object.entries(r.sweeps).map(([key, s]) => {
+    const rows = s.sweep.map((row) => `<tr><td>${row.value}</td><td>${row.governing_utilization}</td></tr>`).join('');
+    return `<h4>${key} (worst @ ${s.worst_value} → util ${s.worst_utilization}, ${s.worst_combination})</h4>
+      <table class="loads-table"><thead><tr><th>${key}</th><th>Governing util</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }).join('');
+  const ow = r.overall_worst;
+  el.innerHTML = `
+    <h3>Multi-Hazard Optimizer — ${r.code_reference}</h3>
+    <div class="loads-props">
+      ${kv('Governing combo', base.governing.combination)}
+      ${kv('Governing util', base.governing_utilization)}
+      ${kv('All OK', base.all_ok ? 'Yes' : 'No')}
+      ${kv('Worst component', ow.component)}
+      ${kv('Worst value', ow.value, 'kN')}
+      ${kv('Worst util', ow.governing_utilization)}
+    </div>
+    <h4>Combination Ranking (by utilization)</h4>
+    <table class="loads-table"><thead><tr><th>#</th><th>Combination</th><th>Factored (kN)</th><th>Response</th><th>Util</th><th>OK</th></tr></thead><tbody>${comboRows}</tbody></table>
+    <h4>Component Sweeps</h4>
+    ${sweepHtml}
     ${warnings(r.warnings)}`;
 }
 

@@ -186,6 +186,14 @@ export function runSensitivityStudy(inputs) {
   });
 }
 
+export function runMultiHazard(inputs) {
+  return jsonRequest('/api/analyze/multi-hazard', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(inputs),
+  });
+}
+
 export function pdeltaAmplify(payload) {
   return jsonRequest('/api/loads/pdelta-amplify', {
     method: 'POST',

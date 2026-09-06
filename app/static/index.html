@@ -275,6 +275,7 @@
         <button class="loads-subtab" data-loadtab="snow">Snow</button>
         <button class="loads-subtab" data-loadtab="pdelta">P-delta</button>
         <button class="loads-subtab" data-loadtab="sensitivity">Sensitivity</button>
+        <button class="loads-subtab" data-loadtab="multihazard">Multi-Hazard</button>
       </div>
     </div>
 
@@ -433,6 +434,46 @@
           <label><input type="checkbox" id="snPS" checked/> S (section)</label>
         </div>
         <button type="submit" class="btn-primary">Run Sensitivity Study</button>
+      </form>
+
+      <!-- MULTI-HAZARD FORM -->
+      <form id="multiHazardForm" class="loads-form glass hidden" data-loadform="multihazard">
+        <h3>Multi-Hazard Load Combination Optimizer</h3>
+        <p class="loads-sub">Evaluates all ASCE 7 combinations against a member capacity, ranks them, and sweeps each hazard component to find the worst-case scenario.</p>
+        <div class="loads-grid">
+          <label>Dead D (kN)<input type="number" id="mhD" value="100" step="5" min="0"/></label>
+          <label>Live L (kN)<input type="number" id="mhL" value="50" step="5" min="0"/></label>
+          <label>Wind W (kN)<input type="number" id="mhW" value="30" step="5" min="0"/></label>
+          <label>Snow S (kN)<input type="number" id="mhS" value="20" step="5" min="0"/></label>
+          <label>Earthquake E (kN)<input type="number" id="mhE" value="40" step="5" min="0"/></label>
+          <label>Response factor<input type="number" id="mhRf" value="1" step="0.1" min="0.01"/></label>
+          <label>Capacity<input type="number" id="mhCap" value="300" step="10" min="1"/></label>
+          <label>Method
+            <select id="mhMethod"><option value="lrfd" selected>LRFD</option><option value="asd">ASD</option></select>
+          </label>
+        </div>
+        <p class="loads-sub" style="margin-top:8px">Sweep ranges (min → max):</p>
+        <div class="loads-grid">
+          <label>D min<input type="number" id="mhDmin" value="50" step="5" min="0"/></label>
+          <label>D max<input type="number" id="mhDmax" value="150" step="5" min="0"/></label>
+          <label>L min<input type="number" id="mhLmin" value="0" step="5" min="0"/></label>
+          <label>L max<input type="number" id="mhLmax" value="100" step="5" min="0"/></label>
+          <label>W min<input type="number" id="mhWmin" value="0" step="5" min="0"/></label>
+          <label>W max<input type="number" id="mhWmax" value="100" step="5" min="0"/></label>
+          <label>S min<input type="number" id="mhSmin" value="0" step="5" min="0"/></label>
+          <label>S max<input type="number" id="mhSmax" value="50" step="5" min="0"/></label>
+          <label>E min<input type="number" id="mhEmin" value="0" step="5" min="0"/></label>
+          <label>E max<input type="number" id="mhEmax" value="80" step="5" min="0"/></label>
+        </div>
+        <p class="loads-sub" style="margin-top:8px">Components to sweep:</p>
+        <div class="loads-grid">
+          <label><input type="checkbox" id="mhCD" checked/> D</label>
+          <label><input type="checkbox" id="mhCL" checked/> L</label>
+          <label><input type="checkbox" id="mhCW" checked/> W</label>
+          <label><input type="checkbox" id="mhCS" checked/> S</label>
+          <label><input type="checkbox" id="mhCE" checked/> E</label>
+        </div>
+        <button type="submit" class="btn-primary">Optimize Load Combinations</button>
       </form>
     </div>
 
