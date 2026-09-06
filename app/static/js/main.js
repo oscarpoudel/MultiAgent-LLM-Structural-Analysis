@@ -10,7 +10,7 @@ import { initModals, showLoadModal, showMemberLoadModal, showSupportModal, showS
 import { initExports } from './results.js';
 import { initSections } from './sections.js';
 import { initLoads } from './loads.js';
-import { initTabs } from './tabs.js';
+import { initTools } from './tabs.js';
 import { initTheme } from './theme.js';
 import { initShortcuts } from './shortcuts.js';
 import { initCameraPosition, updateStatus } from './canvas3d/ui.js';
@@ -128,7 +128,7 @@ function showLandingPage() {
   byId('setupPage').classList.remove('active');
   byId('tab-draw').classList.add('hidden');
   byId('tab-draw').classList.remove('active');
-  byId('mainTabs').style.display = 'none';
+  byId('toolsWrap').style.display = 'none';
   byId('projectBadge').style.display = 'none';
 }
 
@@ -139,7 +139,7 @@ function showSetupPage() {
   byId('setupPage').classList.add('active');
   byId('tab-draw').classList.add('hidden');
   byId('tab-draw').classList.remove('active');
-  byId('mainTabs').style.display = 'none';
+  byId('toolsWrap').style.display = 'none';
   byId('projectBadge').style.display = 'none';
 }
 
@@ -150,7 +150,7 @@ function showDrawPage() {
   byId('setupPage').classList.remove('active');
   byId('tab-draw').classList.remove('hidden');
   byId('tab-draw').classList.add('active');
-  byId('mainTabs').style.display = 'flex';
+  byId('toolsWrap').style.display = 'block';
   byId('projectBadge').style.display = 'flex';
 
   byId('projectName').textContent = currentProject.name;
@@ -159,7 +159,7 @@ function showDrawPage() {
   if (!drawPageInitialized) {
     initModals(draw);
     initCanvas({ showSupportModal, showLoadModal, showMemberLoadModal, showSlabModal });
-    initTabs({ onDrawTab: resizeCanvas });
+    initTools({ onDrawTab: resizeCanvas });
     initAnalysis();
     initExports();
     initChat();

@@ -5,27 +5,6 @@ export function byId(id) {
   return document.getElementById(id);
 }
 
-export function showTab(tabName) {
-  $$('.tab').forEach((button) => button.classList.remove('active'));
-
-  const TAB_PAGES = ['tab-draw', 'tab-loads', 'tab-sections', 'tab-history'];
-  TAB_PAGES.forEach(id => {
-    const page = document.getElementById(id);
-    if (page) {
-      page.classList.add('hidden');
-      page.classList.remove('active');
-    }
-  });
-
-  const tab = $(`.tab[data-tab="${tabName}"]`);
-  const page = byId(`tab-${tabName}`);
-  if (tab) tab.classList.add('active');
-  if (page) {
-    page.classList.remove('hidden');
-    page.classList.add('active');
-  }
-}
-
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

@@ -47,7 +47,7 @@ export function initLoads() {
   });
 }
 
-function switchLoadTab(name) {
+export function switchLoadTab(name) {
   $$('.loads-subtab').forEach((t) => t.classList.toggle('active', t.dataset.loadtab === name));
   $$('.loads-form').forEach((f) => f.classList.toggle('hidden', f.dataset.loadform !== name));
 }

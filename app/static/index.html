@@ -18,12 +18,29 @@
   <div class="topbar-inner">
     <div class="brand"><span class="brand-icon">&#9651;</span> StructAgent</div>
     <span class="credit">Developed by <a href="https://www.oscarp.com.np" target="_blank" rel="noopener">Oscar</a></span>
-    <nav class="tabs" id="mainTabs" style="display:none;">
-      <button class="tab active" data-tab="draw">Draw</button>
-      <button class="tab" data-tab="loads">Loads</button>
-      <button class="tab" data-tab="sections">Sections</button>
-      <button class="tab" data-tab="history">History</button>
-    </nav>
+    <div class="tools-wrap" id="toolsWrap" style="display:none;">
+      <button id="toolsBtn" class="tools-btn" title="Tools menu">&#9776; Tools <span class="tools-caret">&#9662;</span></button>
+      <div class="tools-menu hidden" id="toolsMenu">
+        <p class="tools-menu-title">Loads</p>
+        <button class="tools-item" data-tool="wind">Wind</button>
+        <button class="tools-item" data-tool="seismic">Seismic</button>
+        <button class="tools-item" data-tool="spectrum">Response Spectrum</button>
+        <button class="tools-item" data-tool="snow">Snow</button>
+        <button class="tools-item" data-tool="pdelta">P-delta</button>
+        <button class="tools-item" data-tool="sensitivity">Sensitivity</button>
+        <button class="tools-item" data-tool="multihazard">Multi-Hazard</button>
+        <p class="tools-menu-title">Design</p>
+        <button class="tools-item" data-tool="library">Section Library</button>
+        <button class="tools-item" data-tool="select">Steel Selection</button>
+        <button class="tools-item" data-tool="concrete">Concrete Design</button>
+        <button class="tools-item" data-tool="timber">Timber Design</button>
+        <button class="tools-item" data-tool="foundation">Foundation</button>
+        <button class="tools-item" data-tool="fatigue">Fatigue</button>
+        <button class="tools-item" data-tool="cost">Cost Estimate</button>
+        <p class="tools-menu-title">Other</p>
+        <button class="tools-item" data-tool="history">History</button>
+      </div>
+    </div>
     <div id="projectBadge" class="project-badge" style="display:none;">
       <span id="projectName">Project</span>
       <button id="projectMenuBtn" class="icon-btn-sm" title="Project menu">&#8942;</button>
@@ -196,6 +213,11 @@
     <label class="chk"><input type="checkbox" id="rigidDiaphragmToggle" checked/> Rigid floor diaphragms</label>
     <button id="draw333FrameBtn" class="btn-xs" style="width:100%; margin-bottom:4px;">3x3 3-Story Frame</button>
     <button id="applySectionGroupsBtn" class="btn-xs" style="width:100%; margin-bottom:4px;">Apply Beam/Column Sections</button>
+    <div style="display:flex; gap:4px; margin-bottom:4px;">
+      <button id="exportJsonBtn" class="btn-xs" style="flex:1;" title="Export the current model as JSON">&#8681; Export</button>
+      <button id="importJsonBtn" class="btn-xs" style="flex:1;" title="Import a model from a JSON file">&#8679; Import</button>
+    </div>
+    <input type="file" id="importJsonFile" accept="application/json,.json" style="display:none;" />
     <button id="runBtn" class="run-btn">&#9654; Analyze</button>
     <button id="clearAnalysisBtn" class="clear-btn">Clear Analysis</button>
     <button id="clearBtn" class="clear-btn">Clear Model</button>
@@ -261,10 +283,12 @@
 </main>
 
 <!-- ============================================================ -->
-<!--  TAB: LOADS (Wind / Seismic / Snow determination)            -->
+<!--  POPUP: LOADS (Wind / Seismic / Snow determination)          -->
 <!-- ============================================================ -->
-<main id="tab-loads" class="page hidden">
-  <div class="loads-layout">
+<div class="modal-overlay hidden" id="modal-loads">
+  <div class="modal modal-lg glass">
+    <button class="modal-close" data-close="modal-loads" title="Close">&times;</button>
+    <div class="loads-layout">
     <div class="loads-head glass">
       <h2>Load Determination</h2>
       <p class="loads-sub">ASCE 7-22 wind, seismic &amp; snow — deterministic, no LLM.</p>
@@ -480,14 +504,17 @@
     <div class="loads-results glass" id="loadsResults">
       <p class="placeholder">Fill a form and calculate to see results.</p>
     </div>
+    </div>
   </div>
-</main>
+</div>
 
 <!-- ============================================================ -->
-<!--  TAB: SECTIONS                                               -->
+<!--  POPUP: SECTIONS & DESIGN                                    -->
 <!-- ============================================================ -->
-<main id="tab-sections" class="page hidden">
-  <div class="sec-layout">
+<div class="modal-overlay hidden" id="modal-sections">
+  <div class="modal modal-lg glass">
+    <button class="modal-close" data-close="modal-sections" title="Close">&times;</button>
+    <div class="sec-layout">
     <div class="sec-head glass">
       <h2>Sections &amp; Design</h2>
       <div class="sec-subtabs">
@@ -687,18 +714,22 @@
 
       <div id="secResults" class="sec-results glass"><p class="placeholder">Search for a section or run a design.</p></div>
     </div>
+    </div>
   </div>
-</main>
+</div>
 
 <!-- ============================================================ -->
-<!--  TAB: HISTORY                                                -->
+<!--  POPUP: HISTORY                                              -->
 <!-- ============================================================ -->
-<main id="tab-history" class="page hidden">
-  <div class="hist-layout">
+<div class="modal-overlay hidden" id="modal-history">
+  <div class="modal modal-md glass">
+    <button class="modal-close" data-close="modal-history" title="Close">&times;</button>
+    <div class="hist-layout">
     <div class="hist-head"><h2>Analysis History</h2><button id="histRefresh" class="btn-xs">Refresh</button></div>
     <div id="histList" class="hist-list glass"><p class="placeholder">Click Refresh to load.</p></div>
+    </div>
   </div>
-</main>
+</div>
 
 <!-- ============================================================ -->
 <!--  MODAL: Support / Load Picker                                -->

@@ -1,12 +1,13 @@
 import { fetchHistory } from './api.js';
-import { byId, showTab } from './dom.js';
+import { byId } from './dom.js';
 import { setChatPrompt } from './chat.js';
+import { closePopup } from './tabs.js';
 
 export function initHistory() {
   byId('histRefresh').addEventListener('click', loadHistory);
 }
 
-async function loadHistory() {
+export async function loadHistory() {
   const content = byId('histList');
   content.innerHTML = '<p class="placeholder">Loading...</p>';
   try {
@@ -29,7 +30,7 @@ function makeHistoryCard(item) {
   card.innerHTML = `<div class="hist-hdr"><span class="hist-type">${(item.analysis_type || 'beam').toUpperCase()}</span><span class="hist-date">${date}</span></div><p class="hist-prompt">${(item.prompt || '').substring(0, 120)}</p>`;
   card.addEventListener('click', () => {
     setChatPrompt(item.prompt);
-    showTab('draw');
+    closePopup('modal-history');
   });
   return card;
 }

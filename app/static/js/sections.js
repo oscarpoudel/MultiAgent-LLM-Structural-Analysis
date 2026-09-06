@@ -54,7 +54,7 @@ export function initSections() {
   });
 }
 
-function switchSectionTab(name) {
+export function switchSectionTab(name) {
   $$('.sec-subtab[data-sectab]').forEach((t) => t.classList.toggle('active', t.dataset.sectab === name));
   $$('[data-secrow]').forEach((row) => row.classList.toggle('hidden', row.dataset.secrow !== name));
   const showSteel = name === 'select';
