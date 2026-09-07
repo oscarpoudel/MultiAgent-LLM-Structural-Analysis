@@ -10,9 +10,14 @@ import { initModals, showLoadModal, showMemberLoadModal, showSupportModal, showS
 import { initExports } from './results.js';
 import { initSections } from './sections.js';
 import { initLoads } from './loads.js';
-import { initTools } from './tabs.js';
+import { initRibbon, measureRibbon } from './ribbon.js';
+import { initPopups } from './tabs.js';
+import { initModelTree } from './modelTree.js';
+import { initViewPresets } from './viewPresets.js';
+import { initCommandPalette } from './commandPalette.js';
 import { initTheme } from './theme.js';
 import { initShortcuts } from './shortcuts.js';
+import { initStatusbar } from './statusbar.js';
 import { initCameraPosition, updateStatus } from './canvas3d/ui.js';
 
 let currentProject = null;
@@ -23,6 +28,7 @@ let lastSavedSnapshot = '';
 initTheme();
 initLandingPage();
 initSetupPage();
+initCommandPalette();
 
 function initLandingPage() {
   byId('newProjectBtn').addEventListener('click', async () => {
@@ -128,7 +134,7 @@ function showLandingPage() {
   byId('setupPage').classList.remove('active');
   byId('tab-draw').classList.add('hidden');
   byId('tab-draw').classList.remove('active');
-  byId('toolsWrap').style.display = 'none';
+  byId('ribbon').style.display = 'none';
   byId('projectBadge').style.display = 'none';
 }
 
@@ -139,7 +145,7 @@ function showSetupPage() {
   byId('setupPage').classList.add('active');
   byId('tab-draw').classList.add('hidden');
   byId('tab-draw').classList.remove('active');
-  byId('toolsWrap').style.display = 'none';
+  byId('ribbon').style.display = 'none';
   byId('projectBadge').style.display = 'none';
 }
 
@@ -150,7 +156,7 @@ function showDrawPage() {
   byId('setupPage').classList.remove('active');
   byId('tab-draw').classList.remove('hidden');
   byId('tab-draw').classList.add('active');
-  byId('toolsWrap').style.display = 'block';
+  byId('ribbon').style.display = 'block';
   byId('projectBadge').style.display = 'flex';
 
   byId('projectName').textContent = currentProject.name;
@@ -159,7 +165,10 @@ function showDrawPage() {
   if (!drawPageInitialized) {
     initModals(draw);
     initCanvas({ showSupportModal, showLoadModal, showMemberLoadModal, showSlabModal });
-    initTools({ onDrawTab: resizeCanvas });
+    initRibbon();
+    initPopups({ onDrawTab: resizeCanvas });
+    initModelTree();
+    initViewPresets();
     initAnalysis();
     initExports();
     initChat();
@@ -167,6 +176,7 @@ function showDrawPage() {
     initLoads();
     initHistory();
     initShortcuts();
+    initStatusbar();
     initProjectAutosave();
     drawPageInitialized = true;
     }
@@ -174,6 +184,7 @@ function showDrawPage() {
   // Wait for the browser to lay out the tab (it was display:none, now visible)
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
+      measureRibbon();
       resizeCanvas();
       initCameraPosition();
     });

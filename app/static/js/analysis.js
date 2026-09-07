@@ -11,14 +11,10 @@ export function initAnalysis() {
   const clearAnalysisBtn = byId('clearAnalysisBtn');
   if (clearAnalysisBtn) clearAnalysisBtn.addEventListener('click', clearAnalysisResults);
   byId('clearBtn').addEventListener('click', () => clearCurrentModel({ confirmFirst: true }));
-  const exportJsonBtn = byId('exportJsonBtn');
-  const importJsonBtn = byId('importJsonBtn');
+  // File import lives in the ribbon (Model tab); only the hidden file input
+  // change handler is needed here.
   const importJsonFile = byId('importJsonFile');
-  if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportModelJson);
-  if (importJsonBtn && importJsonFile) importJsonBtn.addEventListener('click', () => importJsonFile.click());
   if (importJsonFile) importJsonFile.addEventListener('change', importModelJson);
-  const draw333FrameBtn = byId('draw333FrameBtn');
-  if (draw333FrameBtn) draw333FrameBtn.addEventListener('click', drawThreeByThreeThreeStoryFrame);
   init3DAnalysisControls();
   window.StructAgentDebug = {
     getState: () => JSON.parse(JSON.stringify(S)),
@@ -47,12 +43,9 @@ function init3DAnalysisControls() {
       S.rigidDiaphragms = diaphragmToggle.checked;
     });
   }
-
-  const applyGroupsBtn = byId('applySectionGroupsBtn');
-  if (applyGroupsBtn) applyGroupsBtn.addEventListener('click', applyMemberGroupSections);
 }
 
-async function runAnalysis() {
+export async function runAnalysis() {
   if (S.nodes.length < 2 || S.members.length < 1) {
     alert('Draw at least 2 nodes and 1 member.');
     return;

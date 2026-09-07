@@ -1,6 +1,13 @@
 import { byId } from '../dom.js';
 import { S } from '../state.js';
 import { canvas3d, triggerRedraw } from './scene.js';
+import { colorForRatioHex } from './colorScale.js';
+
+// Transient legend data for the on-canvas result legend. Cleared each draw.
+let activeLegend = null;
+export function getActiveLegend() {
+  return activeLegend;
+}
 
 function getLevelNodes() {
   const mode = canvas3d.viewMode;
@@ -44,6 +51,7 @@ function getLevelMembers() {
 
 export function draw() {
   if (!canvas3d.scene) return;
+  activeLegend = null;
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   canvas3d.scene.background = new THREE.Color(isDark ? '#0f1419' : '#f8fafb');
 
@@ -86,6 +94,33 @@ export function draw() {
   if (showDeformed && showDeformed.checked && S.results && (S.results.node_displacements || S.results.displacements)) {
     drawDeformedShape3D(isDark);
   }
+
+  updateLegendDom();
+}
+
+function updateLegendDom() {
+  const legend = byId('canvasLegend');
+  if (!legend) return;
+  if (!activeLegend) {
+    legend.classList.add('hidden');
+    return;
+  }
+  legend.classList.remove('hidden');
+  const title = byId('legendTitle');
+  const minEl = byId('legendMin');
+  const maxEl = byId('legendMax');
+  const unitEl = byId('legendUnit');
+  if (title) title.textContent = activeLegend.title;
+  if (minEl) minEl.textContent = formatLegendNum(activeLegend.min);
+  if (maxEl) maxEl.textContent = formatLegendNum(activeLegend.max);
+  if (unitEl) unitEl.textContent = activeLegend.unit || '';
+}
+
+function formatLegendNum(value) {
+  if (value === undefined || value === null || !Number.isFinite(value)) return '0';
+  if (value >= 100) return value.toFixed(0);
+  if (value >= 10) return value.toFixed(1);
+  return value.toFixed(2);
 }
 
 function clearGroup(group) {
@@ -754,7 +789,7 @@ function drawMemberForceOverlay3D() {
     const demand = Math.max(summary.max_abs_moment_y_kn_m || 0, summary.max_abs_moment_z_kn_m || 0, summary.max_abs_axial_kn || 0);
     if (demand <= 0) return;
     const ratio = Math.min(demand / maxVal, 1);
-    const color = ratio > 0.66 ? 0xef4444 : ratio > 0.33 ? 0xf97316 : 0x22c55e;
+    const color = colorForRatioHex(ratio);
     const radius = 0.08 + ratio * 0.16;
 
     const v1 = new THREE.Vector3(n1.x, n1.y, n1.z || 0);
@@ -771,6 +806,13 @@ function drawMemberForceOverlay3D() {
     mesh.lookAt(v2);
     canvas3d.membersGroup.add(mesh);
   });
+
+  activeLegend = {
+    title: 'Member demand (max |M| / |N|)',
+    unit: 'kN·m / kN',
+    min: 0,
+    max: maxVal,
+  };
 }
 
 function drawStoryDriftOverlay3D() {
@@ -788,7 +830,7 @@ function drawStoryDriftOverlay3D() {
 
     const demandRatio = drift.drift_ratio_delta_over_h ?? (drift.drift_ratio ? 1 / drift.drift_ratio : 0);
     const utilization = Math.max(0, demandRatio / 0.02);
-    const color = utilization > 1 ? 0xef4444 : utilization > 0.5 ? 0xf59e0b : 0x22c55e;
+    const color = colorForRatioHex(Math.min(utilization, 1));
     const opacity = 0.35 + Math.min(utilization, 1) * 0.25;
 
     let v1;
@@ -818,6 +860,17 @@ function drawStoryDriftOverlay3D() {
     mesh.userData = { id: member.id, driftUtilization: utilization };
     canvas3d.membersGroup.add(mesh);
   });
+
+  activeLegend = {
+    title: 'Story drift utilization',
+    unit: 'Δ/h / 0.02',
+    min: 0,
+    max: 1,
+    marks: [
+      { at: 0.5, label: '50%' },
+      { at: 1.0, label: '100%' },
+    ],
+  };
 }
 
 function drawDeformedShape3D(isDark) {

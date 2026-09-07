@@ -34,26 +34,19 @@ jobs:
           pip install --upgrade pip
           pip install flask==3.1.2 httpx==0.28.1 numpy openseespy \
             pydantic==2.13.2 "pydantic-ai==1.5.0" pydantic-settings==2.13.1 \
-            python-dotenv==1.2.2 pytest==8.3.4 "pytest-cov==6.0.0" waitress==3.0.2
+            python-dotenv==1.2.2 waitress==3.0.2
 
       - name: Lint with ruff
         run: |
           pip install ruff
-          ruff check app/ tests/ --output-format=github
+          ruff check app/ --output-format=github
 
-      - name: Run tests with coverage (gate: 80%)
+      - name: Verify app imports
         run: |
-          pytest tests/ -v --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+          python -c "from app.main import create_app; create_app(); print('app import OK')"
         env:
           AGENT_LLM_PROVIDER: none
           APP_SECRET_KEY: ci-test-secret-key
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: coverage.xml
 
   docker:
     runs-on: ubuntu-latest

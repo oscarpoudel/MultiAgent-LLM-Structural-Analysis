@@ -22,19 +22,25 @@ This software is intended for research, education, experimentation, and early-st
 
 ### Conversational AI Agent
 - Chat interface for greetings, capability questions, and engineering requests
-- Optional Ollama or PydanticAI LLM routing with deterministic fallbacks
+- **Multi-agent system**: a team of specialist LLM agents — Router, Intent, Planner, Extractor, Critic, and Reporter — coordinate every request via native tool-calling (typed JSON schemas)
 - **Context-aware chat**: the agent sees the current 3D model and analysis results, answering questions about geometry, loads, floors, drifts, reactions, member forces, and more
 - **Canvas tool routing**: the agent can draw beams, create 3D frame templates, apply member sections, toggle rigid diaphragms, set load combinations, and clear analysis results — all from natural language
-- **LLM connection status indicator**: green/yellow/red dot in the chat header showing live connectivity
+- **LLM connection status indicator**: green/yellow/red dot in the chat header and bottom status bar showing live connectivity
+- Deterministic *solvers* (OpenSeesPy, closed-form) remain the source of every number; a compact deterministic fallback is used only when no LLM is reachable, so the app still works offline
 
 ### Interactive 3D Modeling Canvas
-- 3D canvas with grids, floor levels, plan/elevation/3D views, snapping, and axis labels
+- **ETABS-style ribbon** command bar with grouped tabs — Model (templates, sections, file I/O), Loads, Design, Analyze (type, load combination, diaphragms, run/clear), and View (display toggles, scale, settings)
+- 3D canvas with grids, floor levels, plan/elevation/3D views, snapping, and axis labels — **opens in 3D perspective view by default**
+- **Camera presets** widget: Front / Back / Left / Right / Top / Bottom / Fit-to-view
+- **Command palette** (`Ctrl`/`Cmd` + `K`): searchable runner for every action — run analysis, templates, loads, design tools, view modes, display toggles, export/import, theme
+- **Model tree** panel: live list of nodes, members, and slabs with click-to-select (highlights in canvas and opens the property panel)
 - Node, member, slab, and support tools for building structural models
 - Beam/column/brace **member grouping** with one-click default section assignment
 - Load assignment to `D`, `L`, `EX`, `EY` cases with nodal, member, and slab area loads
 - **Rigid floor diaphragm** constraints for 3D floor levels
-- **Rigid diaphragm** toggle for floor-level constraint
-- Deformed shape and member force overlay visualization
+- Deformed shape and member force / story drift overlays with a **continuous color scale** and an on-canvas **result legend** (min/max + gradient)
+- **Live status bar** showing node/member/load counts, active load combination, current tool, solver, and LLM connectivity
+- Friendly **empty-state** overlay with quick-start templates when the canvas has no geometry
 
 ### Solver Engine
 - OpenSeesPy-backed beam, truss, 2D frame, and 3D frame analysis paths
@@ -123,23 +129,29 @@ app/
     sections.py        AISC section lookup
   static/
     index.html         Main application page
-    styles.css         Full UI styling (glass design, topbar, canvas, chat, modals)
+    styles.css         Full UI styling (glass design, ribbon, topbar, canvas, chat, modals, status bar)
     js/
       chat.js          Chat UI, context builder, LLM status polling, canvas actions
       analysis.js      Model payload builder, drawing functions, analysis runner
       state.js         Global state (S) with nodes, members, loads, results
       main.js          App initialization, project grid, autosave
+      ribbon.js        ETABS-style ribbon (tabs, actions, height sync, empty-state)
+      modelTree.js     Model tree panel (nodes/members/slabs, click-to-select)
+      commandPalette.js Ctrl+K searchable command runner
+      viewPresets.js   Camera preset widget (front/back/left/right/top/bottom/fit)
+      statusbar.js     Bottom status bar (live model stats, LLM indicator, empty-state)
       canvas3d/        Three.js 3D canvas (render, interaction, scene, ui, export)
+        colorScale.js  Continuous result color scale shared by overlays + legend
       results.js       Results panel, CSV/Markdown export, force overlays
       sections.js      AISC section browser
       projects.js      Server-side project persistence with fallback
       history.js       Analysis history panel
       api.js           API fetch wrappers
       dom.js           DOM helpers
-      tabs.js          Tab navigation
+      tabs.js          Large tool popup manager (loads/sections/history)
       shortcuts.js     Keyboard shortcuts
       modals.js        Nodal load, member load, slab dialogs
-  tools/
+    tools/
     beam.py            Closed-form beam calculations (SS, cantilever, fixed, propped)
     opensees_beam.py   OpenSeesPy beam analysis tool
     opensees_3d.py     OpenSeesPy 3D frame analysis tool
@@ -170,29 +182,11 @@ app/
 scripts/
   debug_chat.py        CLI debugger for chat routing
   run.py               Alternative entry point
-tests/
-  test_flask_app.py    API integration tests (chat, analyze, canvas, context, LLM status, projects)
-  test_beam_tool.py    Beam calculation tests
-  test_all_tools.py    Cross-tool test suite
-  test_opensees_3d.py  3D frame OpenSeesPy tests
-  test_loads.py        Wind/seismic/snow/slab load tools
-  test_section_select.py  Steel section selection
-  test_concrete.py     Concrete beam/column design
-  test_timber.py       Timber beam design
-  test_foundation.py   Spread footing + pile capacity
-  test_fatigue.py      Fatigue S-N check
-  test_cost.py         Cost estimation
-  test_sensitivity.py  Sensitivity study
-  test_multi_hazard.py Multi-hazard optimizer
-  test_pdelta.py       P-delta amplification
-  test_response_spectrum.py  Response-spectrum analysis
-  test_story_forces.py Story-force application
-  test_cross_validation.py   Cross-validation suite
-  test_openapi.py      OpenAPI spec generation
-  test_pdf_export.py   PDF export
-  test_reports.py      Report formatting
-  test_fallbacks.py    Solver fallback chains
 ```
+
+> **Note on tests:** the `tests/` directory is intentionally kept out of the public
+> repository (see `.gitignore`). It is available locally for development and is
+> excluded from the GitHub upload.
 
 ---
 
@@ -224,16 +218,16 @@ Edit `.env` if your Ollama endpoint, model, or timeout settings differ:
 OLLAMA_BASE_URL=http://127.0.0.1:11434
 OLLAMA_MODEL=your-model-name
 AGENT_LLM_PROVIDER=ollama
-AGENT_LLM_TIMEOUT_S=8.0
+AGENT_LLM_TIMEOUT_S=90.0
 ```
 
 Supported `AGENT_LLM_PROVIDER` values:
 
-- `ollama`: use the configured Ollama model for conversational responses and agent routing
-- `pydanticai`: use the PydanticAI adapter where available
+- `ollama`: use the configured Ollama model for conversational responses, intent extraction, planning, and agent routing (recommended)
+- `pydanticai`: use the PydanticAI/OpenAI-compatible adapter where available
 - `none`: skip live LLM calls and use deterministic fallbacks
 
-Chat responses include a `source` field. `source: "llm"` means the model answered. `source: "fallback"` means the model timed out or was unavailable.
+Chat responses include a `source` field. `source: "llm"` means a specialist agent answered. `source: "fallback"` means the model timed out or was unavailable and the deterministic fallback handled the request.
 
 **Note on debug mode**: When running with `--debug`, the Flask reloader may not pick up new route files. For development, use:
 
@@ -264,16 +258,18 @@ Analyze a simply supported steel beam. Span is 6 m, uniform load is 20 kN/m, E i
 ## 3D Frame Canvas Workflow
 
 1. **Create a project** and define X/Y grid spacings plus story levels.
-2. Use **Node** and **Member** tools to model geometry, or use **3x3 3-Story Frame** as a starter model.
+2. Use **Node** and **Member** tools to model geometry, or start from a template via the **Model** ribbon tab (`3x3 Frame` / `Beam`) or the empty-canvas quick-start buttons.
 3. Assign base supports with the **Support** tool.
-4. Click **Apply Beam/Column Sections** to classify vertical members as columns, horizontal members as beams, and inclined members as braces, then assign default preliminary section properties.
-5. Apply nodal, member, or slab loads. Loads can be assigned to `D`, `L`, `EX`, or `EY` cases.
-6. Select a **load combination** and choose whether **rigid floor diaphragms** are enabled.
+4. Click **Apply Sections** (Model ribbon tab) to classify vertical members as columns, horizontal members as beams, and inclined members as braces, then assign default preliminary section properties.
+5. Apply nodal, member, or slab loads. Loads can be assigned to `D`, `L`, `EX`, or `EY` cases — or use the **Loads** ribbon tab for deterministic ASCE 7-22 wind/seismic/snow.
+6. On the **Analyze** ribbon tab, select the analysis type, **load combination**, and whether **rigid floor diaphragms** are enabled.
 7. Click **Analyze**.
-8. Review base reactions, story drift, member envelopes, displacements, deformed shape, and force overlays.
-9. Use **CSV** or **Report** in the results panel to export full analysis data.
+8. Review base reactions, story drift, member envelopes, displacements, deformed shape, and force/drift overlays (with the on-canvas color legend). Use the **View** ribbon tab to toggle grid, labels, deformed shape, forces, and drift.
+9. Use **CSV** / **Report** / **PDF** in the results panel to export full analysis data.
 
-Use **Clear Analysis** to remove results while keeping the model. Use **Clear Model** to delete geometry and loads.
+Use **Clear Results** to remove results while keeping the model. Use **Clear Model** to delete geometry and loads.
+
+**Tips:** press `Ctrl`/`Cmd` + `K` to open the command palette for any action, use the camera preset widget (bottom-left) to snap to Front/Back/Left/Right/Top/Bottom/Fit, and open the **Tree** panel (top-left) to browse and select model elements. The canvas opens in 3D perspective view by default.
 
 ---
 
@@ -319,6 +315,9 @@ A machine-readable OpenAPI 3.0 spec and a self-contained interactive docs page a
 ---
 
 ## Testing
+
+The test suite is kept locally (excluded from the public repo). To run it from a
+checkout that includes `tests/`:
 
 ```powershell
 $env:PYTHONPATH='.'; pytest

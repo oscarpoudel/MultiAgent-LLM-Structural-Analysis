@@ -53,3 +53,23 @@ build/
 node_modules/
 package.json
 package-lock.json
+opencode.json
+
+# Tests are kept locally for development but excluded from the public upload
+tests/
+test_*.py
+test_*.ps1
+run_test.py
+*.pyc
+
+# Local scratch / progress notes
+progress.md
+TODO.md
+scratch/
+*.scratch
+
+# Coverage / test caches
+.coverage
+coverage.xml
+.coverage.*
+htmlcov/

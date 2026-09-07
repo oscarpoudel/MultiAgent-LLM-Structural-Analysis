@@ -22,7 +22,7 @@ export const canvas3d = {
   axesScene: null,
   axesCamera: null,
   axesLabels: null,
-  viewMode: 'elevation',
+  viewMode: '3d',
   elevType: 'xAxis',
   selectedElevGrid: 0,
   gridLinesX: [],
